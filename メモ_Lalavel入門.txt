@@ -1,0 +1,383 @@
+【PHP、lalavelの環境設定】
+macPHPインストールhomebew環境
+参照サイト：
+https://grune.co.jp/blog/laravel-create-local-environment/
+すでにhomebrewはインストール済み
+①提供されているphpのバージョンを確認：
+brew search php
+結果：
+==> Formulae
+brew-php-switcher  php-code-sniffer   php-cs-fixer@2     php@8.1            phpbrew            phpmyadmin         phpunit            pop
+php                php-cs-fixer       php@8.0            php@8.2            phpmd              phpstan            pup                pcp
+
+==> Casks
+eclipse-php                            phpstorm                               phpwebstudy                            pop
+②ご希望のバージョンをインストール：
+brew install php@8.1
+インストール後　やらなきゃいけないっぽいコマンドがいくつか表示
+バージョン確認が失敗、、、
+If you need to have php@8.1 first in your PATH, run:
+  echo 'export PATH="/usr/local/opt/php@8.1/bin:$PATH"' >> /Users/apple/.zshrc
+  echo 'export PATH="/usr/local/opt/php@8.1/sbin:$PATH"' >> /Users/apple/.zshrc
+
+For compilers to find php@8.1 you may need to set:
+  export LDFLAGS="-L/usr/local/opt/php@8.1/lib"
+  export CPPFLAGS="-I/usr/local/opt/php@8.1/include"
+To start php@8.1 now and restart at login:
+  brew services start php@8.1
+  →実行成功　apple@MacBookuso-Pro PHP % brew services start php@8.1
+　　==> Successfully started `php@8.1` (label: homebrew.mxcl.php@8.1)
+Or, if you don't want/need a background service you can just run:
+  /usr/local/opt/php@8.1/sbin/php-fpm --nodaemonize
+If you need to have openjdk@17 first in your PATH, run:
+  echo 'export PATH="/usr/local/opt/openjdk@17/bin:$PATH"' >> /Users/apple/.zshrc
+
+Upgrading from MySQL <8.4 to MySQL >9.0 requires running MySQL 8.4 first:
+ - brew services stop mysql
+ - brew install mysql@8.4
+ - brew services start mysql@8.4
+ - brew services stop mysql@8.4
+ - brew services start mysql
+We've installed your MySQL database without a root password. To secure it run:
+    mysql_secure_installation
+mysql -u root
+
+おそらくmysqlをすでにインストールしているため、mysqlが呼び出せずにエラーしているっぽい
+mysql -u root　→　ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/tmp/mysql.sock' (2)
+①$ sudo mysql.server start
+をしてから冒頭の
+②$ mysql -u root
+スタートはサクセスしたが、②は同じエラー
+バージョンの問題の可能性があるらしくバージョンを更新してみる。
+①バージョンの確認：
+mysql --version
+mysql  Ver 9.0.1 for macos14.4 on x86_64 (Homebrew)
+②brew install mysql　インストールしてみるが、すでに入っているとエラー
+うまくいかないので再インストール
+①brew uninstall mysql
+②brew install mysql
+やはりうまくいかないhomebrewとして入れているため、確認方法が違うだけかもしれない。
+
+うまく行った手順：ーーーーーーーーーーーーーーーーーーーーーー
+①brew link --overwrite --force php@8.1
+②表示された2つのコードを実行
+  echo 'export PATH="/usr/local/opt/php@8.1/bin:$PATH"' >> /Users/apple/.zshrc
+  echo 'export PATH="/usr/local/opt/php@8.1/sbin:$PATH"' >> /Users/apple/.zshrc
+③zshを呼び出す
+source ~/.zshrc
+④この手順で成功
+php -v
+PHP 8.1.29 (cli) (built: Jun  5 2024 05:51:57) (NTS)
+Copyright (c) The PHP Group
+Zend Engine v4.1.29, Copyright (c) Zend Technologies
+    with Zend OPcache v8.1.29, Copyright (c), by Zend Technologies
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+③インストールされているか確認：
+php -v
+
+④composer が提供されているか確認
+composerとはPHPのパッケージ管理システム
+brew search composer
+⑤composerインストール
+brew install composer
+⑥インストールされているか確認
+composer
+composerのバージョン
+Composer version 2.7.7 2024-06-10 22:11:12
+
+以下はまだ実行しない、余計なディレクトリを作成したくないため
+⑥Lalavelのインストール：
+以下はディレクトリも一緒に作成する際の手順
+composer create-project "laravel/laravel=6.*" sample
+
+課題のサイトのlalavelだけをインストールするコマンド：
+composer create-project --prefer-dist laravel/laravel . "9.*"
+
+⑦簡易サーバーの起動：
+php artisan serve
+http://127.0.0.1:8000
+
+【Laravelの初期設定】
+①configフォルダ内にあるapp.phpを開く
+この中で設定を変更する項目は、以下の４つです。
+・timezone
+・locale
+・fallback_locale
+・faker_locale
+
+'timezone' => 'Asia/Tokyo',
+
+'locale' => 'ja',
+
+'fallback_locale' => 'ja',
+
+'faker_locale' => 'ja_JP',
+
+②.envファイルを開く
+ファイルは主に定数が設定されている。先ほどのapp.phpからも参照されている。
+
+APP_NAME=Laravel_Test
+
+この値は、タイトルタグなどで以下のようにすると参照できます。
+
+<title>{{ config('app.name') }}</title>
+
+
+③次に、データベースとの接続情報を追記します。
+　デフォルトでは以下のようになっています。
+デフォルト：
+ーーーーーーーーーーーー
+.env
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=root
+DB_PASSWORD=
+ーーーーーーーーーーーー
+
+
+④.envファイルのDB_の定数の値を以下のように変更：
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_test
+DB_USERNAME=root
+DB_PASSWORD=root
+
+⑤configフォルダ内にあるdatabase.phpを開く
+以下項目がある。
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+'mysql' => [
+    'driver' => 'mysql',
+    'url' => env('DATABASE_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '3306'),
+    'database' => env('DB_DATABASE', 'forge'),
+    'username' => env('DB_USERNAME', 'forge'),
+    'password' => env('DB_PASSWORD', ''),
+    'unix_socket' => env('DB_SOCKET', ''),
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'strict' => true,
+    'engine' => null,
+    'options' => extension_loaded('pdo_mysql') ? array_filter([
+        PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    ]) : [],
+],
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+「charset」と「collation」を以下のように変更する。
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+
+'charset' => 'utf8mb4',
+'collation' => 'utf8mb4_0900_ai_ci',　←mampで設定している
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+
+⑤php artisan config:clearを実行
+※もし、php artisan serveを実行している状態であれば、「Ctrl + C」
+   INFO  Configuration cache cleared successfully.
+が表示されたら成功
+
+⑥php.iniファイルの以下を有効化する。
+php.iniファイルのパスは、
+コマンドプロンプトで以下のように入力すれば表示されます。
+
+php --ini
+実際の表示
+ーーーーーーーーーーーーーーーー
+Configuration File (php.ini) Path: /usr/local/etc/php/8.1
+Loaded Configuration File:         /usr/local/etc/php/8.1/php.ini
+Scan for additional .ini files in: /usr/local/etc/php/8.1/conf.d
+Additional .ini files parsed:      /usr/local/etc/php/8.1/conf.d/ext-opcache.ini
+ーーーーーーーーーーーーーーーーーー
+
+⑦パスが表示されたら、そのphp.iniファイルを開き、
+以下の記述がされているところを見つける。
+「;」を削除して有効化にする。
+
+;extension=pdo_mysql
+
+extension=pdo_mysql
+⑧マイグレーションの実行
+php artisan migrate
+
+
+【MVC】
+モデルの作成：
+①以下を実行
+php artisan make:model TodoList -mc
+ポイント：
+モデル名は単数
+テーブル名は複数形
+3つのファイルが作成される
+app\Http\Controllers：contorollerファイル
+app/Models：モデルファイル
+database/migrations：マイグレーションファイル
+
+②database\migrationsフォルダ内「日付_create_todo_lists_table.php」のupメソッドの方に、以下記述
+$table->string('name', 100);
+
+③以下の実行
+php artisan migrate
+
+④ダミーデータをいくつか登録する
+　ダミーデータを作成するには「シーダー」という機能を使う
+シーダーファイル作成コード：
+php artisan make:seeder TodoListSeeder
+
+database/seeders：XXXSeeder.phpというファイルが作成される
+
+⑤シーダーファイルに以下の記述に書き換える。
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB; //追記
+
+class TodoListSeeder extends Seeder
+{
+  /**
+   * Run the database seeds.
+   *
+   * @return void
+   */
+  public function run()
+  {
+    DB::table('todo_lists')->insert(
+      [
+        [
+          'name' => 'テスト1',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+        [
+          'name' => 'テスト2',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+        [
+          'name' => 'テスト3',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+      ]
+    );
+  }
+}
+
+
+
+
+
+
+
+
+【youtube参照：及び公式ドキュメント】
+Eloquent ORMとは
+データ操作のための機能
+モデルとDBを対応付ける。
+
+ORM　Object Relational Mapping
+プログラミング技法のこと
+データベースから取得したデータをオブジェクトとして扱える
+
+Eloquentモデルの作り方
+Artisanコマンド
+php artisan make:model モデル名
+・モデル名は、テーブル名の単数形にする必要がある。
+例）blogs => Blog ※先頭文字が大文字
+他のテーブルと関連づけもできる。
+
+公式ドキュメント：
+https://readouble.com/laravel/11.x/ja/eloquent.html
+動画では"6.x"だったが現在は"11.x"
+
+公式ドキュメントの確認すべき重要な箇所：
+・テーブル名　テーブルの記述方法
+・主キー　プライマリーキーの指定方法　デフォルトでIDが指定されている。
+・複数代入　データを保存する際に設定が必要
+　モデルクラスでfillableまたはguardedプロパティを指定する必要がある
+　fillable：ホワイトリストとして動作する。
+　guarded： ブラックリストとして動作する。
+　※両方一度には使えない。
+
+
+テーブル名の指定：
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Flight extends Model
+{
+    /**
+     * モデルに関連付けるテーブル
+     *
+     * @var string
+     */
+    protected $table = 'my_flights';
+}
+
+プライマリーキーの指定：
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Flight extends Model
+{
+    /**
+     * テーブルに関連付ける主キー
+     *
+     * @var string
+     */
+    protected $primaryKey = 'flight_id';
+}
+
+・複数代入：
+
+createメソッドを使用して、単一PHPステートメントで新しいモデルを「保存」できます。挿入したモデルインスタンスが、このメソッドにより返されます。
+ーーーーーーーーーーーーーーーー
+use App\Models\Flight;
+
+$flight = Flight::create([
+    'name' => 'London to Paris',
+]);
+ーーーーーーーーーーーーーーーー
+
+悪意のあるユーザーがHTTPリクエストを介してis_adminパラメータを送信し、それがモデルのcreateメソッドに渡されて、ユーザーが自分自身を管理者に格上げする場合などがあり、
+予想外のカラムの変更を防止するため、モデル属性を定義する必要がある。
+Eloquentを使い始めるには、複数代入可能にするモデル属性を定義する必要があります。これは、モデルの$fillableプロパティを使用して行います。たとえば、Flightモデルのname属性を一括割り当て可能にしましょう。
+ーーーーーーーーーーーーーーーー
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Flight extends Model
+{
+    /**
+     * 複数代入可能な属性
+     *
+     * @var array
+     */
+    protected $fillable = ['name'];
+}
+ーーーーーーーーーーーーーーーー
+
+複数代入可能な属性を指定したら、createメソッドを使用してデータベースに新しいレコードを挿入できます。createメソッドは、新しく作成したモデルインスタンスを返します。
+ーーーーーーーーーーーーーーーー
+$flight = Flight::create(['name' => 'London to Paris']);
+ーーーーーーーーーーーーーーーー
+モデルインスタンスがすでにある場合は、fillメソッドを使用して、属性の配列をセットできます。
+ーーーーーーーーーーーーーーーー
+$flight->fill(['name' => 'Amsterdam to Frankfurt']);
+ーーーーーーーーーーーーーーーー
