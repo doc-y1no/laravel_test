@@ -270,6 +270,150 @@ class TodoListSeeder extends Seeder
   }
 }
 
+⑥database\seeders\DatabaseSeeder.phpを開く
+runメソッド内を以下のように変更
+作成したTodoListSeederクラスを呼び出すように設定
+public function run()
+{
+  $this->call([
+    TodoListSeeder::class
+  ]);
+}
+
+⑦以下のコマンドを入力してシードの実行
+php artisan db:seed --class=TodoListSeeder
+'INFO　Seeding database.'と表示される。
+
+
+【コントローラーを作成する】
+①app\Http\Controllersフォルダ内にある、
+「TodoListController.php」を開く
+コントローラー内に書く処理としては、
+作成したモデルクラスの、
+「Todolist」から「データを取得する処理」を書き、
+「取得した値をビューに渡す処理」を書く
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\TodoList;//追記
+
+class TodoListController extends Controller
+{
+  public function index(Request $request)
+  {
+    $todo_lists = TodoList::all();
+
+    return view('todo_list.index', ['todo_lists' => $todo_lists]);
+  }
+}
+コードの解説：
+以下の部分で、データベースから
+テーブル「todo_lists」にある全レコードを取得
+$todo_lists = TodoList::all();
+
+そして、以下で、
+テンプレートに変数「todo_lists」を渡している
+
+return view('todo_list.index', ['todo_lists' => $todo_lists]);
+viewメソッドの第一引数には、
+「どのビューファイルか」を指定。
+書き方は、view(‘フォルダ名.ファイル名’)
+また、ビューに値を渡すときは、
+このように変数名と値がペアになった連想配列を第2引数に設定する。
+
+②ビューファイルを用意する
+コントローラーでview(‘todo_list.index’)と書いたので、
+resources\viewsフォルダ内には以下のようなフォルダ構成で
+ファイルを作成すればOK
+フォルダ構成：
+resrouces
+  L views
+      L todo_list
+          L index.blade.php
+
+③ファイル内に以下記述
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>テスト</title>
+</head>
+
+<body>
+
+    @if ($todo_lists->isNotEmpty())
+        <ul>
+            @foreach ($todo_lists as $item)
+                <li>
+                    {{ $item->name }}
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
+</body>
+
+</html>
+
+Laravelでは、
+ビューを表示する用のファイルとして、
+Bladeテンプレートというものを使用する。
+アットマークから始まるものは、Bladeディレクティブといい、
+Bladeテンプレート内でスクリプトを書く際は、
+基本的にBladeディレクティブを使用。
+素のPHPを書くこともできる。
+
+変数の記述方法：
+変数の出力は波括弧を２つ重ねて以下のように記述
+{{ 変数の値 }}
+
+先ほど、コントローラーから渡ってきた変数「todol_lists」は、
+「コレクション型」という型の配列のようなもので渡ってくる。
+コレクション型を操作するためのメソッドがいくつかあり、
+そのうちの1つである「isNotEmpty」メソッドを使用して、
+コレクションが空じゃないときだけ表示している。
+※テーブルにデータが１つもないときは、
+ コレクションは空なので、
+ ulタグそのものが表示されない。
+
+④ルーティングする
+routes\web.phpを開き、以下を追記
+use App\Http\Controllers\TodoListController;
+Route::get('/list', [TodoListController::class, 'index']);
+
+※use文で利用するパスを記載しないとエラーになる。
+contrllerのルーティングエラー文：
+"Target class [HelloController] does not exist."
+
+ルーティングの記述形式：
+Route::get( アドレス , [コントローラーの名前::class , メソッド名] );
+上記はRoute::getだが、
+フォームからPOST送信した場合に何か処理を行う時は、
+Route::postと記載する。
+
+⑤listにアクセスする。
+以下のコマンドを入力して実行し、「/list」にアクセス
+php artisan serve
+コンソールに以下が表示されサーバーが立ち上がる。
+  INFO  Server running on [http://127.0.0.1:8000].
+
+  Press Ctrl+C to stop the server
+
+
+
+
+
+
+
+
+
+
 
 
 
