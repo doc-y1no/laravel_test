@@ -1,0 +1,167 @@
+【Todoアプリを作ろう(要件定義・設計)】
+①Todoアプリの要件定義
+Todoアプリの機能一覧
+・タスクの追加
+・未完了タスクの表示
+・タスクのステータスの更新と、タスク編集
+・タスクの削除
+CRUDとは、データの作成(Create)、データの読み取り(Read)、データの更新(Update)、データの削除(Remove)の頭文字を取ったもの。
+
+【Todoアプリの画面設計】
+①要件定義をもとに、デザインツールでワイヤーフレームを作成し、画面設計
+MVCでいうところの「V（View）」に相当
+・top画面
+・タスクを追加で一覧に表示
+・削除を押下でダイアログアラートを表示OKクリックで削除
+・編集押下で編集画面に遷移
+・編集し、完了を押すと一覧ページに戻る
+
+【Todoアプリの機能設計】
+各画面がもつ機能について、大まかに記載。
+機能設計は、MVCでいうところの「C（Controller）」に相当。
+【トップページ】
+機能名：タスクを登録する
+処理内容：
+・入力フォームからタスクを受け取る
+・受け取ったタスクをDBに保存する
+必要なデータ：
+・タスク
+取得元：
+・入力フォーム
+ユーザ操作：
+・フォームに入力
+・「追加する」をクリック
+
+【トップページ（タスク登録）】
+機能名：タスクを表示する
+処理内容：
+・DBから未完了のタスクを取得
+・未完了タスクを表示
+必要なデータ：
+・未完了なタスク
+取得元：
+・DBから取得
+ユーザ操作：
+なし
+
+【トップページ（タスク削除）】
+機能名：タスクを削除する
+処理内容：
+・タスクを削除する
+・タスク削除をキャンセルする
+必要なデータ：
+・タスクID
+取得元：
+・フォーム
+ユーザ操作：
+・OKを押下
+・「キャンセル」ボタンをクリック
+
+
+【Todoアプリのデータ設計】
+データ設計は、MVCでいうところの「M(モデル)」に相当
+今回登場するテーブルは「タスク」を管理するテーブルだけ
+タスクテーブル(tasks)
+タスクID(id)
+タスク名(name, string=100)
+ステータス(status, boolean)
+作成日(created_at)
+更新日(updated_at)
+ステータスは、タスクが完了のときはtrue、未完了のときはfalse
+タスクを新規追加したときは、デフォルトでfalseになるように設定
+
+
+【Todoアプリを作ろう(実装)】
+①tasksテーブルを作る
+テーブルをつくるために、マイグレーションファイルを作成。
+以下のコマンドを実行。
+php artisan make:migration create_tasks_table
+
+②migrationファイルの変更
+database/migrationsフォルダ内に、「日付_create_tasks_table.php」が作成されます。
+コードの中身で、Schema::createのfunctionsの中身で、tasksテーブルのカラムを定義します。
+今回は以下のようにすればOKです。
+
+Schema::create('tasks', function (Blueprint $table) {
+  $table->id();
+  $table->string('name', 100);
+  $table->boolean('status')->default(false);
+  $table->timestamp('updated_at')->useCurrent()->nullable();
+  $table->timestamp('created_at')->useCurrent()->nullable();
+});
+statusのデフォルトはfalseにしたいので、Laravelの「カラム修飾子」にある、default()を使っている
+作成日と更新日のデフォルトを現在の日付になるようにカラム修飾子を使って設定
+
+③マイグレーションの実行
+以下マイグレーションを実行。
+php artisan migrate
+
+【モデルを作る】
+①モデル作成のコマンド実行
+テーブル名が、「tasks」と複数形だったので、モデル名は単数形になる。
+php artisan make:model Task
+app\ModelsにTask.phpが作成される
+
+【コントローラーを作る】
+①リソースコントローラー
+Laravelには、CRUD操作を1行のコードでコントローラーに割りあてる仕組みがある。
+それが「リソースコントローラー」
+
+通常、以下のように１つ１つメソッドを作成してルートに記述していきます。
+
+通常の「web.php」
+ーーーーーーーーーーーーーーーーーー
+
+Route::get('/',[TaskController::class,'index']);//一覧表示
+Route::post('/create',[TaskController::class,'create']);//タスク追加
+Route::post('/edit',[TaskController::class,'edit']);//タスク更新
+Route::post('/delete',[TaskController::class,'delete']);//タスク削除
+
+ーーーーーーーーーーーーーーーーーー
+
+リソースコントローラーを使うと、これを1つにまとめてより簡潔に書ける。
+
+②リソースコントローラーを作る
+以下コマンドを実行しソースコントローラーを作成するときは、resourceオプションを追加する
+php artisan make:controller TaskController --resource
+
+app\Http\Controllersに、「TaskController.php」が作成される
+
+中身を見ると
+コードの中には、index、create、store、show、edit、update、destroy
+というメソッドがあらかじめ作成されている。
+
+③ルート情報を追記
+routes/web.php
+「web.php」に以下二行追記
+use App\Http\Controllers\TaskController;
+
+Route::resource('tasks', TaskController::class);
+
+先ほどあったTaskController.php内の各メソッドが使用できる様になった。
+
+④リソースコントローラーでのメソッドを呼び出すURIの確認　※実装で使わないが、ルートの確認のため、ヘビロテするコマンドなくらい重要
+リソースコントローラーでは、これらのメソッドを呼び出すURIがあらかじめ決まっているのが特徴。
+それを確認するためには、以下のコマンドを実行。
+php artisan route:list
+
+波括弧で{ }となっている部分がID
+たとえば、「/tasks/2」でGETアクセスだったら、showメソッドが呼ばれて、IDが2のタスクを表示される
+
+【ビューの作成】
+ビューは「resources/views」内で管理
+viewsフォルダ直下にファイルを作成することの可能だが、
+わかりやすいようにviewsフォルダ直下に「tasks」フォルダを作成して、
+その中にindex.blade.phpを作成する
+
+①Viewのファイル作成のためにフォルダ階層を作成
+resources/views/tasks/index.blade.phpという階層になるように作成
+作成したtasksフォルダ内のindex.blade.phpの中身は、ひとまず「タスクページ」などとかいておく
+
+②indexメソッドに記述
+TaskController.phpの、indexメソッドの中身を以下にする
+public function index()
+{
+    return view('tasks.index');
+}
+「/tasks」にアクセスがあったら、先ほど作成したindex.blade.phpの中身が表示される

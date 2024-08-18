@@ -405,17 +405,142 @@ php artisan serve
 
   Press Ctrl+C to stop the server
 
+⑥データベースのデータとのリンク状態の確認
+本当にデータベースのデータとリンクしているか確認するために、
+TodolistSeeder.phpを開き、
+runメソッド内を、以下のように修正してみる。
+TodolistSeeder.php:
 
+public function run()
+{
+  DB::table('todo_lists')->insert(
+    [
+      [
+        'name' => 'テスト1',
+        'created_at' => now(),
+        'updated_at' => now(),
+      ],
+      [
+        'name' => 'テスト2',
+        'created_at' => now(),
+        'updated_at' => now(),
+      ],
+    ]
+  );
+}
 
+⑦seederファイルを書き換えたら以下を実行して上書き
+改めてデータを登録するために、以下のコマンドを実行する。
+このコマンドはデータベースからすべてのテーブルを削除したあと、
+マイグレーションを行い、さらにシーディングによりデータ登録を行うコマンド。
+php artisan migrate:fresh --seed
 
+【ここまでの実行のまとめ】
+これまで行ったことと、この図を照らし合わせると次のようになる。
+①「/list」にGETリクエストがある
+②ルーティングで指定したコントローラーのメソッドが実行される
+③データベースからモデルを通してデータを取得し、ビューに渡し、表示する
 
+作成の一例として：
+①モデルを作ってデータベースにテーブルとデータを登録し、
+②次にコントローラーを整備して、
+③その次にビューを作成し、
+④最後にルーティング。
+という手順でやるとやりやすいかも
 
+【TailwindCSSを導入する】
+TailwindCSSの公式サイト
+https://tailwindcss.com/docs/guides/laravel
+①tailwindのインストールをする。
+laravel_testプロジェクトに移動したコマンドプロンプト(またはターミナル)を開く。
+以下のコマンドを実行。
 
+npm install -D tailwindcss postcss autoprefixer
+②tailwindをinitする
+インストールの処理が終わったら、以下を実行
+npx tailwindcss init -p
 
+上記①②でtailwind.config.jsというファイルと、postcss.config.jsというファイルが作成される。
 
+③tailwind.config.jsを変更する。
+tailwind.config.jsを開き、以下のように変更
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    content: [
+        "./resources/**/*.blade.php",
+        "./resources/**/*.js",
+        "./resources/**/*.vue",
+    ],
+    theme: {
+        extend: {},
+    },
+    plugins: [],
+}
 
+contentという名前は、元はpurge「不要なデータを除去する」といった意味。
+たくさんあるユーティリティクラスの中から、
+実際に使用されているクラスだけを抽出して、
+他の使っていないクラスは除去して読み込むようになり、
+ファイル容量が減る仕組み。
 
+Tailwind CSSを使う場合は、
+contentに、Tailwind CSSを使用するファイルの
+パスを記述する必要があり、必要に応じて追記していく。
 
+④app.cssに追記
+resources\css\app.cssを開きます。
+最初は何も記載がありませんが、以下を追記します。
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+⑤コンソールにて以下を実行
+npm run dev
+
+実行すると以下の状態で止まるがエラーではなく正常
+このままbladeファイルの変更をすると、cssが正常に適用される。
+　LARAVEL v9.52.16  plugin v0.7.8
+
+  ➜  APP_URL: http://localhost
+
+⑥index.blade.phpの変更
+resources/views/todo_list/index.blade.phpを開き、以下の様にする
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>テスト</title>
+
+    @vite('resources/css/app.css')
+</head>
+
+<body>
+
+    @if ($todo_lists->isNotEmpty())
+        <div class="container px-5 mx-auto">
+            <ul class="font-medium text-gray-900 bg-white rounded-lg border border-gray-200">
+                @foreach ($todo_lists as $item)
+                    <li class="py-4 px-5 w-full rounded-t-lg border-b last:border-b-0 border-gray-200">
+                        {{ $item->name }}
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+</body>
+
+</html>
+
+headタグ内の、以下のコードにより、Tailwind CSSを読み込んでいる
+@vite('resources/css/app.css')
+
+※フロント用(Vite)のサーバーを起動する「npm run dev」と、
+バックエンド(Laravel)用のサーバーを起動する「php artisan serve」の両方を
+起動しておく必要があるため注意。
 
 
 
