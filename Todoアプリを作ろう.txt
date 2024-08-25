@@ -165,3 +165,2549 @@ public function index()
     return view('tasks.index');
 }
 「/tasks」にアクセスがあったら、先ほど作成したindex.blade.phpの中身が表示される
+
+③tasksの見た目を、整える
+index.blade.phpの中身を以下にする
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Todo</title>
+
+    @vite('resources/css/app.css')
+</head>
+
+<body class="flex flex-col min-h-[100vh]">
+    <header class="bg-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="py-6">
+                <p class="text-white text-xl">Todoアプリ</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="py-[100px]">
+                <p class="text-2xl font-bold text-center">今日は何する？</p>
+                <form action="/tasks" method="post" class="mt-10">
+                  @csrf
+
+                  <div class="flex flex-col items-center">
+                    <label class="w-full max-w-3xl mx-auto">
+                        <input
+                            class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+                            placeholder="洗濯物をする..." type="text" name="task_name" />
+                    </label>
+
+                    <button type="submit" class="mt-8 p-4 bg-slate-800 text-white w-full max-w-xs hover:bg-slate-900 transition-colors">
+                        追加する
+                    </button>
+                  </div>
+
+                </form>
+            </div>
+        </div>
+    </main>
+    <footer class="bg-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="py-4 text-center">
+            <p class="text-white text-sm">Todoアプリ</p>
+        </div>
+    </div>
+    </footer>
+</body>
+
+</html>
+
+記述のポイント：
+・headタグの中で以下の記述により、Tailwind CSSを読み込む
+@vite('resources/css/app.css')
+・タスクを入力するテキスト入力欄（name属性の値はtask_nameとしています）と、ボタンをformタグで囲んでいる。
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+<form action="/tasks" method="post" class="mt-10">
+  @csrf
+
+  <div class="flex flex-col items-center">
+    <label class="w-full max-w-3xl mx-auto">
+        <input
+            class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+            placeholder="洗濯物をする..." type="text" name="task_name" />
+    </label>
+
+    <button type="submit" class="mt-8 p-4 bg-slate-800 text-white w-full max-w-xs hover:bg-slate-900 transition-colors">
+        追加する
+    </button>
+  </div>
+
+</form>
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+追加するボタンを押したら、DBに保存したいため、TaskController.phpのstoreメソッドを使いたい。
+そのため、formのアクション属性は「/tasks」で、methodはPOSTにする。
+・Laravelでフォームをつくる場合は、セキュリティ対策のCSRF対策として、必ず「@csrf」というディレクティブが必要
+　クロスサイトフォージェリの対策のため、ユーザ毎にトークンを作成して、リクエストフォームにトークンも含めて送信する記述
+csrf参照サイト　2つ
+https://readouble.com/laravel/9.x/ja/csrf.html
+https://qiita.com/messhii222/items/972f12033edf548e8eda
+
+【タスクを登録する】
+①TaskController.phpのstoreメソッドを編集する
+storeメソッドの引数にはRequestというクラスのインスタンスが$requestとして渡ってくる。
+このようなやりかたを「依存性注入（DI: Dependency Injection）」という。
+これはLaravelの話ではなく、PHP言語の話。
+少し発展的な内容として、Laravelでは依存性注入が多く使われているため一度勉強しておくといい。
+依存注入についての参照サイト：
+https://laraweb.net/surrounding/2001/
+
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+※loginfo logdb　デバックツール
+コンソールログ　logファイル　
+実行結果を実際にみて動作確認する。
+
+フロントエンド　エンドポイントからデータ持ってくる　LPなら実務経験者からしたら脳死でもできる人　2ヶ月1本
+バックエンド　一つのメソッドの責任が重い　ロジック考える人はメモした方がよいかも
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+
+タスク入力画面で、「追加する」を押したらこのstoreメソッドにその値が渡ってくる。
+試しに、以下のようにしてその値を確認してみる。
+public function store(Request $request)
+{
+  $task_name = $request->input('task_name');
+  dd($task_name);
+}
+
+コード解説：
+$request->input('フォームのキーの名前')
+フォームから送信されたデータのうち、特定のキーの値を取り出すことができる。
+今回は、テキスト入力欄のname属性値を「task_name」にして、
+$request->input(‘task_name’)と書くことで、値を取り出している。
+$requestには様々なメソッドが存在しており、これ以外にも送信されたフォーム項目の全ての値を取り出す「$request->all()」などもある。
+$requestのメソッド一覧参照：
+https://readouble.com/laravel/9.x/ja/requests.html
+
+Laravelではデバッグ用の記述がいくつかあり、先ほどはddメソッドを使いデバッグした。
+このメソッドの他にもdumpなどがある。
+ddを使うと、dd以降の処理は実行されない。という特徴があり、PHPでいうとvar_dumpしてexit()している感じ。
+
+②storeメソッド内で受け取った値をDBへ保存する
+DB操作はいくつか方法がある。
+1つがDBクラスのクエリビルダを使った操作と、もう1つがEloquentというORMによる操作。
+今回はEloquentを使う。
+
+備考：
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+ ORMとは？
+ORMは「Object Relational Mapping」の略です。
+これは、互換性のないデータを自動的に変換して、相互にデータをやり取りできるようにするための仕組みです。
+ORMにより、データベースから取り出されたレコードはPHPのオブジェクトの形に変換して渡されるようになります。
+反対にPHPからデータベースに渡すときは、PHPオブジェクトがレコードに変換して渡されます。
+このように、相互にデータ構造を変換することで、シームレスにやり取りが行えるようになるのです。
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+モデルを使うのでuseでTaskモデルを読み込む。
+app/Http/Controllers/TaskController.phpに、以下を追記する。
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Task;//追加
+
+次に、storeメソッドを以下のように変更
+TaskController.php：
+public function store(Request $request)
+{
+  //モデルをインスタンス化
+  $task = new Task;
+
+  //モデル->カラム名 = 値 で、データを割り当てる
+  $task->name = $request->input('task_name');
+
+  //データベースに保存
+  $task->save();
+
+  //リダイレクト
+  return redirect('/tasks');
+
+}
+
+コード解説：
+まず、モデルをインスタンス化する必要がある。
+インスタンス化したものを$taskという変数に入れている。
+
+次に、taksテーブルのnameカラムに、
+フォームから渡ってきたtask_name属性の値を割り当てる。
+やり方は簡単で、「モデルのインスタンス->カラム名 = 値」とするだけ。
+このようにオブジェクト形式で書くことができるのがORMの便利さと言える。
+
+そして、データベースに保存するためにsaveメソッドを実行
+
+最後に、/tasksが再び表示されるように、
+redirectメソッドを使ってリダイレクトする。
+
+これができたら、先ほど同様に何かテキストに入力して、「追加する」を押してみてDBに登録されているか確認する。
+
+③バリデーションチェックを作成する。
+ただ、「追加する」と押したときに、タスクに何も入力していないとエラーになる。
+これを回避するために、バリデーションチェックをする。
+バリデーションチェックはいくつか方法があるが、
+今回は、Validator::makeを使った方法を使う。
+”Validatorクラス”を利用したいので、TaskController.phpに以下を追記する。
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Task;
+use Illuminate\Support\Facades\Validator;//追加
+
+続いて、storeメソッド内を以下のように修正。
+public function store(Request $request)
+{
+  $rules = [
+    'task_name' => 'required|max:100',
+  ];
+
+  $messages = ['required' => '必須項目です', 'max' => '100文字以下にしてください。'];
+
+  Validator::make($request->all(), $rules, $messages)->validate();
+
+  //モデルをインスタンス化
+  $task = new Task;
+
+  //モデル->カラム名 = 値 で、データを割り当てる
+  $task->name = $request->input('task_name');
+
+  //データベースに保存
+  $task->save();
+
+  //リダイレクト
+  return redirect('/tasks');
+}
+
+実際の記載：Validator::make($request->all(), $rules, $messages)->validate();
+記載型：Validator::make($request->all(),バリデーションルール,エラーメッセージ);
+
+第1引数には、$request->all()を指定。
+第2引数にはバリデーションルールを設定。
+連想配列で指定し、以下のようする。
+[フォームの項目名=>バリデーションルール]
+
+バリデーションルールを複数設定したい場合は、パイプ|でつなぐ。
+
+今回は、task_nameに、必須(required)と、
+100文字以下(max:100)をバリデーションルールとして設定。
+
+第3引数では、配列を指定し、バリデーションのエラーメッセージをカスタマイズできる。
+具体的には、以下のようにする。
+[バリデーションルールの名前=>エラーメッセージ]
+
+さらに、Validator::make(…)->validate()としている。
+このように、validateメソッドを呼び出すことで、
+エラーがあったときは元の画面に戻るようにしている。
+そのため、バリデーションに引っかかったときはそれ以降のDBへの保存処理は実行されない。
+
+④ビュー側の編集。
+labelの中にあるinputタグの下に以下を追記。
+resources/views/tasks/index.blade.php:
+@error('task_name')
+  <div class="mt-3">
+      <p class="text-red-500">
+          {{ $message }}
+      </p>
+  </div>
+@enderror
+
+ここでは、@errorディレクティブを使用。
+これは以下のように書く。
+  @error('キー名')
+    {{ $message }}
+  @enderror指定のキーに対するエラーが発生しているかチェックし、
+  もし発生していたら、それに対応するエラー文を{{ $message }}で出力している。
+これで、先ほどコントローラーで設定したtask_nameキーに設定した
+バリデーションのうちのどちらかに引っかかれば、
+それに該当するメッセージが表示される。
+
+バリデーションに引っかかったときは、
+validateメソッドによりこの画面にリダイレクトされるため、
+DBへ保存もされていないはず。
+（実際にphpMyAdminで確認してみたほうがよい。）
+
+あわせて、ちゃんと入力したときは、正しくデータが登録されるかも確認を忘れずに！
+
+【タスクを表示する】
+①TaskController.phpに以下コードを記載する。
+  public function index()
+  {
+    $tasks = Task::all();
+
+    return view('tasks.index', compact('tasks'));
+  }
+コード解説：
+以下のように書くことで、モデルのレコードを全部取得できる。
+  モデル名::all();
+これを変数$tasksに入れ、ビューファイルに、「tasks」という変数名で渡している。
+これは以下のように書いてもOK。
+  return view('tasks.index', ['tasks' => $tasks]);
+が、compactというPHPの関数を使うとより簡単に書くことができる。
+
+②受け取った値を、ビューで表示するための処理を記述する。
+resources/views/tasks/index.blade.phpを開き、
+以下の{{– 追記 –}}から{{– 追記ここまで –}}を追記する。
+index.blade.php：
+{{-- 追記 --}}
+  @if ($tasks->isNotEmpty())
+      <div class="max-w-7xl mx-auto mt-20">
+          <div class="inline-block min-w-full py-2 align-middle">
+              <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                  <table class="min-w-full divide-y divide-gray-300">
+                      <thead class="bg-gray-50">
+                          <tr>
+                              <th scope="col"
+                                  class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                                  タスク</th>
+                              <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                  <span class="sr-only">Actions</span>
+                              </th>
+                          </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                          @foreach ($tasks as $item)
+                              <tr>
+                                  <td class="px-3 py-4 text-sm text-gray-500">
+                                      <div>
+                                          {{ $item->name }}
+                                      </div>
+                                  </td>
+                                  <td class="p-0 text-right text-sm font-medium">
+                                      <div class="flex justify-end">
+                                          <div>
+                                              <form action="/tasks/{{ $item->id }}"
+                                                  method="post"
+                                                  class="inline-block text-gray-500 font-medium"
+                                                  role="menuitem" tabindex="-1">
+                                                  @csrf
+                                                  @method('PUT')
+                                                  <button type="submit"
+                                                      class="bg-emerald-700 py-4 w-20 text-white md:hover:bg-emerald-800 transition-colors">完了</button>
+                                              </form>
+                                          </div>
+                                          <div>
+                                              <a href="/tasks/{{ $item->id }}/edit/"
+                                                  class="inline-block text-center py-4 w-20 underline underline-offset-2 text-sky-600 md:hover:bg-sky-100 transition-colors">編集</a>
+                                          </div>
+                                          <div>
+                                              <form action="/tasks/{{ $item->id }}" method="post"
+                                                  class="inline-block text-gray-500 font-medium"
+                                                  role="menuitem" tabindex="-1">
+                                                  @csrf
+                                                  @method('DELETE')
+                                                  <button type="submit"
+                                                      class="py-4 w-20 md:hover:bg-slate-200 transition-colors">削除</button>
+                                              </form>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                          @endforeach
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+  @endif
+  {{-- 追記ここまで --}}
+
+コード解説：
+$tasks→isNotEmpty()を実行することで、モデルのレコードが存在するかどうか確認し、
+レコードが無い場合は、divタグを表示しないようにしている。
+
+また、@foreachディレクティブにより、モデルのレコードをループで回して表示している。
+完了、編集、削除のボタンは、それぞれformタグで囲んでおり、
+レコードIDを紐づけるように設定しています。
+この際、各formタグの中にも必ず@csrfが必要なことに注意！
+
+ここで、リソースコントローラーの決まり事をおさらいしましょう。
+TaskController.php内の各メソッドは以下のURIとリクエストで関連付けられている。
+php artisan route:listで確認できる。
+
+完了ボタンを押したときは、updateメソッドを実行したい。
+そこで、"php artisan route:list"で確認すると、PUTまたはPATCHで、
+「tasks/タスクのID」にアクセスすれば呼び出すことができると分かる。
+ただ、HTMLのformタグではGETかPOSTしかaction属性には設定できません。
+
+そのため、@method(‘PUT’)などとしてformタグの中に書いてあげると、
+PUTとしてリクエストを送ることが出来る。
+
+削除ボタンも同様に、@method(‘DELETE’)をformタグの中に書いている。
+
+編集ボタンは、aタグで、href属性の値は「/tasks/{{ $item->id }}/edit/」としている。
+
+これは、リソースコントローラーのeditメソッドを呼び出し、
+editメソッド内で編集画面のビュー（この後作成します）を返すようにするため。
+
+ブログBLOG
+TOPブログ【初心者入門】Laravelの使い方解説！Todoアプリ作成
+【初心者入門】Laravelの使い方解説！Todoアプリ作成
+更新日：2024/08/06
+
+
+この記事では、Laravelの使い方を知り、以下のような簡単なWEBアプリケーション(Todoアプリ)を作成し、作って学ぶ内容となっています。
+
+「これからLaravelを学びたいかた」「そもそもLaravelって？」「PHPと何が違うの？」といった疑問についても、初心者目線で、できるだけわかりやすく解説していきますのでぜひ最後までお付き合いください。
+
+こんな人におすすめ！
+・「これからLaravelを学びたい！」と思っているかた。
+・「そもそもLaravelって何？」と気になるかた。
+・「PHPと何が違うの？」と疑問に感じているかた。
+それでは早速参りましょう！
+
+目次 [非表示]
+
+1 PHPだけで開発する際のデメリット
+1.1 セキュリティの問題
+1.2 メンテナンスの問題
+1.3 拡張性の問題
+2 そもそもフレームワークとは
+3 Laravelとは
+3.1 Laravelが人気な理由
+3.2 Laravelをインストールしてみよう
+4 MAMPをインストールする
+5 Composerをインストールする
+6 Laravelをインストールする
+7 Laravelの簡易サーバを立ち上げてみよう
+8 Laravelの初期設定をしよう
+9 MVCとはなんぞや
+10 MVCを体感してみよう
+10.1 モデルを作成する
+10.2 コントローラーを作成する
+10.3 ビューファイルを用意する
+10.4 ルーティングする
+11 TailwindCSSとは？Bootstrapとの違いについて
+12 TailwindCSSを導入する
+13 Todoアプリを作ろう(要件定義・設計)
+13.1 Todoアプリの要件定義
+13.2 Todoアプリの画面設計
+13.3 Todoアプリの機能設計
+13.4 Todoアプリのデータ設計
+13.5 Todoアプリのデータの流れ
+14 Todoアプリを作ろう(実装)
+14.1 tasksテーブルを作る
+14.2 モデルを作る
+14.3 コントローラーを作る
+14.4 ビューを作成る
+14.5 タスクを登録する
+14.6 バリデーション
+14.7 タスクを表示する
+14.8 タスクを編集する
+14.9 タスクを完了する
+14.10 タスクを削除する
+15 まとめ
+PHPだけで開発する際のデメリット
+まず、なぜLaravelなのかを説明するまえに、PHPだけで開発する際のデメリットをご説明します。
+
+PHPだけで開発する際のデメリットは、ずばり3つあります。
+・セキュリティの問題
+・メンテナンスの問題
+・拡張性の問題
+
+セキュリティの問題
+まず1つ目の「セキュリティの問題」ですが、例えば会員登録機能があるようなWEBアプリケーションを作るとします。
+
+その際に気を付けなければいけないのが「CSRF(クロスサイトリクエストフォージェリ)」や「SQLインジェクション」といったセキュリティ対策が必要となります。
+
+たとえばCSRFについてですが、
+WEBアプリケーション側でCSRF対策が行われていないと、外部サーバーから悪意のあるリクエストを受け付けてしまい、ユーザーが意図しない処理が行われてしまいます。
+
+これを対策するためには、WEBアプリケーション側で独自に発行する「トークン」を作成し、何かWEBアプリケーション上で操作を行う際には、必ず「トークン」を持っていないとできないようにしておく必要があります。
+このようにすることで、外部サーバーからリクエストが来ても、「あなたはトークン持っていないから受付けませ～ん」として実行できないようにできるわけです。
+
+ただ、この対策は地味に大変です。
+PHPだけで書くとなると、「トークンを発行する処理」「セッションでトークンを保持する処理」「セッションを破棄する処理」など色々と処理を書かないといけません。
+
+もちろんこれらの処理を頑張ってひと通りPHPだけで書くとかなり勉強になるのでおすすめです。
+
+ただ、実際の大規模なWEBアプリケーションになると多くの人が開発に関わるようになり、このようなセキュリティ対策を知らない人もいたりします。
+そうなってくるとアプリケーションの品質が担保しずらくなりあまり良くないものが出来上がってしまうのは容易に想像できるでしょう。
+
+メンテナンスの問題
+PHPは自由度が高く、初心者にもやさしい言語といえます。
+そういう意味で言うと、厳格なルールがあまりないので、自己流でコードを書くことができます。
+
+ただ、それゆえにメンテナンスが大変になってきます。
+自己流で書くと、そのときはいいのですが、少し経つと「このコードなんだっけ？」となりがちです。
+また、他の人に引き継ぐとなると、引継ぎ作業はかなり大変なものになるでしょう。
+（自己流で書かれたコードを頑張って読み解くのはかなり体力のいる作業です。）
+
+拡張性の問題
+作って終わりのWEBアプリケーションはないですよね。
+
+多くののサービスは、作った後も運用され、「機能追加」などが行われます。
+そのようなときに、「既存のコードからうまく拡張できるか」がポイントになってきます。
+最初からきちんと設計されていれば問題なく拡張できるでしょうが、拡張性など考えずに作ってしまっていた場合は、最悪の場合１から作り直しなんてことも可能性としてはあります。
+
+以上のように、「PHPだけ」で頑張って作ろとすると色々と不都合が生じてしまうのです。
+じゃあどうすればいいのか？
+その答えが「フレームワークの導入」になります。
+
+そもそもフレームワークとは
+フレームワークとは、「枠組み」です。
+「型」が決まっていて、一部「虫食い」のような感じで穴が開いており、実装者はその穴埋めをコーディングして埋めていき１つのアプリケーションを作っていくというイメージになります。
+
+フレームワークにはアプリケーションに必要な様々な機能や仕組みがあらかじめ搭載されているので、開発者はその仕組みを利用しながら、フレームワークが決めたルールに則って開発を進めます。
+
+ルールが決まっているので、だれが書いても同じようなコードになり、保守性が上がり、メンテナンス性も上がります。
+
+また、アプリケーション開発に必要な機能としてセキュリティ対策も搭載されているので、開発者がわざわざコーディングしなくても、用意された機能を利用するだけでいいのです。
+
+拡張性についても、大規模なアプリケーションにも耐えうるように設計されているので問題ありません。
+
+このように、仕組みが用意されているので開発はかなり楽になります。が、一方で、仕組みの裏側を普段意識することがないので、何か問題が起きたときに把握しずらいというデメリットもあります。
+
+💡 よく聞く「ライブラリ」との違いですが、ライブラリは１つ１つの独立した機能を提供します。
+イメージとしては、レゴブロックの部品です。
+１つ１つの部品を組み合わせて大きなものを作るイメージです。
+ライブラリのメリットは、組み合わせが自由なので柔軟性がある点です。
+一方でデメリットは、自由なためコードの品質が保たれにくいことがあげられます。
+Laravelとは
+LaravelとはPHP言語で作られたフレームワークです。
+実はPHPのフレームワークにはいくつか種類があります。
+その中でもなぜLaravelなのかというと、Laravelが今もっとも人気のフレームワークだからです。
+
+以下は、Googleトレンドで各PHPフレームワークの検索動向を比較した際の様子です。
+
+Googleトレンドとは、Googleが提供しているキーワードの検索回数の推移が分かるツールのことです。
+Googleトレンドを使えば、ユーザーが何を検索しているか（または検索されていないのは何か）をほぼリアルタイムで確認できます。
+▼主要なPHPフレームワーク別の過去5年間における、日本での検索動向
+
+
+▼主要なPHPフレームワーク別の過去5年間における、全ての国での検索動向
+
+
+上記の通り、Laravelが世界でも、日本でも断トツで1位の人気を誇っていますね。
+(人気じゃなかったら検索ボリューム自体がそもそも無いので、検索数が多い＝人気があるとしています。)
+
+これほどまでに人気な理由とはいったい何なのでしょうか。
+
+Laravelが人気な理由
+色々なフレームワークと比較したわけではありませんが、筆者が思うに、「学習コストの低さ」が人気の理由として挙げられるかと思います。
+アプリケーション開発で重要な、MVCの概念がわかれば、あとはそのルールに則り、コードを書いていけばいいので比較的簡単だと感じました。
+また、簡単なだけでなく、Unit Test(ユニットテスト)と呼ばれる、日本語でいうと「単体テスト」を行うための機能も用意されており、手軽にテストできます。
+このように、Laravelを使うことで手軽に高品質なアプリケーションを開発できる点が非常に魅力的で、それゆえに人気があるのかと思います。
+
+Laravelをインストールしてみよう
+それでは早速、Laravelをインストールしてみましょう。
+
+今回紹介する手順における開発環境は以下の通りです。
+・Windows10
+・Laravel 9
+・PHP 8.1.0（Laravel9.xを動かすためにはPHP8,0以上が必要です。）
+・Node.js 16.16.0 (Viteというフロントのビルドツールを使うため、Node.js14.18.0以上が必要です。)
+・npm 8.11.0
+・MAMP 5.0.0
+・MySQL 5.27.24
+
+Laravelを使うためにはPHPが必要です。また、データベースも必要となります。これらを、個別に用意してもいいのですが、MAMPを使えば、どちらも搭載されている状態になるので、この記事ではMAMPを使っていきます。
+
+MAMPをインストールする
+LaravelはPHPを使いますので、PHPが動く環境を構築する必要があります。
+今回は自分のPC上で手軽に操作したいので、MAMPを使って、自分のPC上に環境構築していきます！
+
+自分のPC上の環境のことを、ローカル環境といったりします。
+なので、自分のPC上に環境をつくることを、「ローカル環境に環境を構築する」とか言ったりします。
+まずは、MAMPのサイトに移動します。
+
+MAMPの公式サイトへ移動する
+
+筆者はWindowsを使用しているので、以下の赤枠をクリックしてWindows用をダウンロードします。
+
+
+ダウンロードが始まると、以下のような画面になるかもしれませんが、これは無視でOKです。
+
+
+ダウンロードまでに結構時間かかりますのでしばらく待ちます。
+「MAMP_MAMP_PRO_5.0.5.exe」が無事ダウンロードできたら、そのファイルをダブルクリックしましょう。
+「このアプリがデバイスに変更を与えることを許可しますか？」と出た場合は「はい」を押してください。
+すると、以下のようなセットアップ画面が表示されます。
+
+
+「Next」をクリックします。
+すると、以下の画面になります。
+
+上記の赤枠はチェックを外し、「Next」を押します。
+あとは、ライセンスに同意してそのまま「Next」を押し続ければOKです。
+
+最終的に以下の画面になるので、「Install」を押しましょう。
+
+上記の「Destination location」に、「C:\MAMP」と書かれています。
+この場所に、MAMPがインストールされます。
+
+インストールが完了すると以下の画面になりますので、「Finish」をクリックします。
+
+
+さて、インストールされたMAMPのフォルダの場所まで移動してみましょう。
+キーボードのWindowsマークとRキーを同時に押すと、以下のようなものが、画面の左端に表示されます。
+
+上記の赤枠に、「C:\MAMP」を入力して、Enterキーを押してみてください。
+
+以下のようにエクスプローラーが立ち上がります。
+ここにたくさんのフォルダがありますが、このフォルダやファイルが、先ほどインストールしてきたものになります。
+
+
+このフォルダのうち、「bin>php」とクリックして進んでいくと、いくつかのバージョンのphpフォルダがあります。
+MAMPではPHPのバージョンを変えて環境を作成することもでき、このフォルダに別のPHPバージョンをインストールして、使用できるようにすることも可能です。
+
+
+さて、MAMPを起動しましょう。
+おそらく、デスクトップにMAMPのアイコンが表示されているはずなので、それをダブルクリックしてください。
+すると以下のようなウィンドウが立ち上がります。
+
+ウィンドウ上部に「MAMP」「Server」「Tools」などありますが、そのうちの「MAMP」をクリックし、「Preferences」をクリックしてください。
+
+続いて、以下の「PHP」をクリックしてください。
+
+
+すると以下の画面になります。
+「Version」と書かれたところにある数字が、現在MAMPで使用されているPHPのバージョンになります。
+Laravelのバージョン9を動かすためには、PHPのバージョンが8.0以上でないといけません。
+そのため、ここの「Version」が、8.0以上ではない場合は変更してください。
+
+
+今回は「Version」は8.1.0で進めたいと思います。
+そのため、セレクトボックスをクリックして、8.1.0にしてください。
+
+
+最後に画面下にある「OK」をクリックしてください。
+すると最初の画面にもどり、「Apache Server」と「MySQL Server」の緑色のランプが消えて、また再度光ります。
+その状態になればOKです。
+
+Composerをインストールする
+Laravelを動かすためにはもう１つ必要なものがあります。それがComposerです。
+まずはComposer公式サイトへ移動して、Composerをインストールしましょう。
+
+Composer公式サイトへ移動する
+
+
+Composerは、「A Dependency Manager for PHP」と書かれいている通り、依存関係を管理するツールです。
+JavaScriptをやっているかたならわかるかもしれませんが、npmみたいなものです。
+Laravel自体はさまざまなパッケージを組み合わせて作られており、それらを1つ1つ手動でダウンロードしてきてセットアップするのは無理なので、このようなツールを介してLaravelをインストールする必要があります。
+
+さて、上記サイトで「Download」というボタンがあるのでそれをクリックします。
+ダウンロード方法について色々書かれていますが、Windowsであれば以下の赤枠をクリックしてください。
+
+
+「Composer-Setup.exe」というファイルがダウンロードされますので、完了したらそのファイルをダブルクリックします。
+
+すると、まず以下の画面になります。
+recommendedと書かれた方をクリックしてください。
+
+
+すると、「このアプリが変更を加えることを許可しますか？」のようなメッセージがでますので「はい」をクリックしてください。
+
+次に、以下の画面になるので、特に何もせずそのまま「Next」を押します。
+
+
+続いて、どのPHPを使うかを選択します。
+今回は、MAMPにあるphp8.1.0のphp.exeを指定してください。
+「Browse…」をクリックし、php8.1.0フォルダ内にあるphp.exeをクリックして「OK」をクリックすれば以下の様になります。
+また、「Add this PHP to your path?」にはチェックを入れましょう。
+こうすることで、システム環境変数のpathに、このphp.exeまでのパスが自動的に設定されます。
+
+この、システム環境変数に、php.exeまでのパスが設定されていないと、このあと使っていく「php artisan serve」などのphpコマンドが実行できないです。
+phpコマンドをコマンドプロンプトから使えるようにするために設定しているんだな～という理解でOKです。
+
+
+設定できたら「Next」をクリックしてください。
+次に「Proxy Settings」についての画面になりますが、特に何もせず「Next」をクリックします。
+
+すると、以下のような画面になります。
+先ほど指定したphpのパスなどが表示されていますね。
+問題なければ「Install」をクリックしましょう。
+
+※間違えて設定してInstallを押したとしても、再度、「Composer-Setup.exe」を開き、パスなどを変更してインストールすることもできるので安心してください。
+
+
+インストールできたら以下の画面になります。
+Importantに書かれている内容をさらっと読んだら「Next」を押しましょう。
+
+
+次の画面では「Finish」を押してください。
+最後に、Composerがインストールされたことと、PHPコマンドがコマンドプロンプトから実行できるか確認しましょう。
+
+Windowsの場合は、コマンドプロンプトを開いてください。
+開いたらcomposer -Vと入力してみてください。
+以下のようにバージョンが表示されればOKです！
+
+
+つづいて、php -v と入力してください。
+以下の様にバージョンが表示されればOKです！
+
+
+💡 余談
+Windowsの場合、コマンドプロンプトともう１つ、Windows PowerShellというものがあります。
+これはWindowsに標準搭載されており、こちらの方が新しいです。
+どちらを使ってもいいですが、Windows PowerShellは、タブ機能などや別のコマンドラインなども動かすことができるので便利です。
+Laravelをインストールする
+ようやく、Laravelをインストールして動かすための準備ができました。
+それでは早速、Laravelをインストールしましょう！
+
+まず、デスクトップに「laravel_test」というフォルダを作成してください。
+※フォルダを作成する場所に決まりは無く、どこでもOKです。
+
+作成したら、laravel_testフォルダをダブルクリックしてください。
+
+すると、上記の画面になります。
+
+このあとLaravel本体を、このlaravel_testにインストールしたいのですが、そのためには、コマンドプロンプトから、インストールするためのコマンドを入力して実行する必要があります。
+
+ただ、laravel_testに移動した状態でそのコマンドを実行しないと、laravel_testフォルダ内にインストールされません。
+そのため、laravel_testに移動した状態のコマンドプロンプトを立ち上げる必要があります。
+
+手順としては、まず、上記の赤枠をクリックします。
+すると、laravel_testまでのパスが表示され、青く選択された状態になります。
+
+その状態で、英語小文字で「cmd」と入力し、Enterキーを押してください。
+以下のように、コマンドプロンプトが立ち上がります。
+
+
+よくみると、上記赤線のように、laravel_testフォルダまで移動した状態でコマンドプロンプトが開かれています。
+これでLaravelをインストールするコマンドを実行したら、laravel_testフォルダ内にインストールされることになります。
+
+それでは、Laravelをインストールしましょう！
+laravel_testフォルダに移動した状態のコマンドプロンプトで、以下を入力してください。
+
+
+composer create-project --prefer-dist laravel/laravel . "9.*"
+
+
+上記のように入力してEnterキーを押せばOKです。
+
+すると何やらエラーが出てしまいました。。
+
+▼エラーメッセージ
+
+
+Your requirements could not be resolved to an installable set of packages.
+
+色々と原因について調べると、上記の緑線に記載されているphp.iniファイルを変更する必要があります。
+このphp.iniファイルをVsCodeなどで開き、以下の文字列を探してください。
+
+
+;extension=fileinfo
+
+見つけたら、これを有効化するために、先頭にあるセミコロンを削除して以下の様にします。
+
+
+extension=fileinfo
+
+変更できたら保存をし、再度Laravelインストールコマンドを入力して実行してみてください。
+
+すると、以下のようにエラーが出てしまいました。
+
+
+laravel_testのフォルダ内が空じゃないと怒られています。
+そのため、laravel_testフォルダ内にあるフォルダを全部削除してください。
+
+💡 余談
+Gitで管理する場合、最初に「.git」というファイルが配置されます。
+これがある状態でも同じように怒られますので、その場合は、いったん「.git」フォルダを別の場所に移動し、インストール完了後に配置し直すとうまくいきます。
+
+上記のように空にしたら、再度Laravelインストールのためのコマンドを入力して実行しましょう。
+無事インストールできると、以下の赤線のようなメッセージがでます。
+
+
+これでインストール完了です！
+
+Laravelの簡易サーバを立ち上げてみよう
+インストール完了ができたら以下のコマンドを入力して実行してみてください。
+
+
+php artisan serve
+
+すると、以下のようになります。
+
+上記のURLにブラウザからアクセスしてみましょう。
+
+以下のような感じで画面が表示されればOKです！！
+
+
+Laravelの初期設定をしよう
+Laravelを無事インストールできましたね！おめでとうございます！
+さて、続いてはLaravelの初期設定を行いましょう。
+laravel_testフォルダをVsCodeで開いてください。
+
+たくさんフォルダがありますが、configフォルダ内にあるapp.phpを開いてください。
+中身をよく見ると、連想配列がreturnされているシンプルな構成となっています。
+
+この中で設定を変更する項目は、以下の４つです。
+・timezone
+・locale
+・fallback_locale
+・faker_locale
+
+これらは現在、外国仕様になっているので、日本仕様にするために、以下のように変更します。
+
+config\app.php
+
+'timezone' => 'Asia/Tokyo',
+
+'locale' => 'ja',
+
+'fallback_locale' => 'ja',
+
+'faker_locale' => 'ja_JP',
+
+これでOKです。
+
+つづいて、.envファイルを開いてください。
+このファイルは主に定数が設定されています。ここにある定数は、先ほどのapp.phpからも参照されています。（たとえば、APP_NAMEなど）
+
+このファイルでは、まずAPP_NAMEを変更しましょう。
+デフォルトでは以下の様になっています。
+
+.env
+
+APP_NAME=Laravel
+
+これを、以下の様に変更しましょう。
+
+.env
+
+APP_NAME=Laravel_Test
+
+この値は、タイトルタグなどで以下のようにすると参照できます。
+
+
+<title>{{ config('app.name') }}</title>
+
+次に、データベースとの接続情報を追記します。
+デフォルトでは以下のようになっています。
+
+.env
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=root
+DB_PASSWORD=
+
+ここに必要な値を設定し、このあとデータベースと接続確認を行います。
+
+そのためにはまず、データベースを作成する必要あります。
+MAMPを起動して、「Opne WebStart page」をクリックしてください。
+次に、以下の「TOOLS」をクリックし、「PHPMYADMIN」をクリックします。
+
+
+すると、以下の様にphpMyAdminの画面が開きます。
+
+次に、上記の赤矢印にある「New」をクリックしてください。
+すると、以下のようにデータベース作成画面になります。
+
+
+データベース名は「laravel_test」、照合順序は「utf8_general_ci」にして、「Create」を押しましょう。
+これで、データベースが作成されました！
+
+
+さて、データベースが作成できたので、データベースの情報を.envファイルに記載しましょう。
+.envファイルのDB_の定数の値を以下のように変更してください。
+
+.env
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_test
+DB_USERNAME=root
+DB_PASSWORD=root
+
+これでOKです。
+最後に、configフォルダ内にあるdatabase.phpを開いてください。
+そのファイル内に以下の項目があります。
+
+config\database.php
+
+'mysql' => [
+    'driver' => 'mysql',
+    'url' => env('DATABASE_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '3306'),
+    'database' => env('DB_DATABASE', 'forge'),
+    'username' => env('DB_USERNAME', 'forge'),
+    'password' => env('DB_PASSWORD', ''),
+    'unix_socket' => env('DB_SOCKET', ''),
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'strict' => true,
+    'engine' => null,
+    'options' => extension_loaded('pdo_mysql') ? array_filter([
+        PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    ]) : [],
+],
+
+このうち、「charset」と「collation」を以下のように変更してください。
+
+config\database.php
+
+'charset' => 'utf8',
+'collation' => 'utf8_general_ci',
+
+これでOKです!
+
+💡 charset(文字コード)とcollation(照合順序)はデフォルトのままでももちろんOKです！！
+ただ、今回は絵文字を使わない想定にしたので、utf8にしています！
+▼参考
+utf8とutf8mb4の違い【MySQL】
+実際の案件では、絵文字も使うかもしれないので、utf8mb4にしておく方が無難ですね！
+
+ただし、実案件などでは、collation(照合順序)は「utf8mb4_bin」というものに変更しておくのがいいでしょう。
+その理由については、以下の記事を参考にしてみてください。
+▼参考
+laravel使うならmysqlのcollation指定はutf8mb4_binにしておくべき
+
+💡データベース全体の文字コードや照合順序を、上記のように設定したとしても、テーブルごとに変更できますので安心してください！
+その方法は、以下のようにします！
+
+[引用] Laravel 9.x マイグレーション
+最後に、以下のコマンドを実行してください。
+※もし、php artisan serveを実行している状態であれば、「Ctrl + C」で止めてください。
+
+
+php artisan config:clear
+
+.envファイルやconfig内のファイルを変更したときは、このコマンドを実行しないとうまく反映されないので注意してください。
+
+さて、いよいよデータベースとの接続が上手くできているか確認します。
+laravel_testフォルダに移動した状態のコマンドプロンプトを開いてください。
+※もし、php artisan serveを実行している状態であれば、「Ctrl + C」で止めてください。
+
+そのうえで、以下のコマンドを入力して実行しましょう。
+
+
+php artisan migrate
+
+すると、おそらくエラーでうまく実行できないと思います。
+
+
+色々と調べると、php.iniファイルの以下を有効化しなければいけないことがわかりました。
+php.iniファイルのパスは、コマンドプロンプトで以下のように入力すれば表示されます。
+
+
+php --ini
+
+パスが表示されたら、そのphp.iniファイルを開き、以下の記述がされているところを見つけてください。
+
+
+;extension=pdo_mysql
+
+これを有効化するために、以下のようにします。
+
+
+extension=pdo_mysql
+
+これで、再度「php artisan migrate」を入力して実行しましょう。
+うまくいくと以下のようになります。
+
+
+では、phpMyAdminに戻り、先ほど作成したlaravel_testのデータベースの中身を確認してみましょう。
+※特に何も変わってない場合は、一度ブラウザをリロードしてください。
+
+上記のように、テーブルが作成されていますね！
+これでデータベースとうまく接続ができていることが確認できました！
+
+以上で、Laravelの初期設定と、データベースとの接続確認が無事終わりました！
+
+最後の「php artisan migrate」というコマンドでテーブルが作られたのは、どういう仕組みかと思いますよね。
+
+のちほど詳しく解説しますが、Laravelにはテーブルをコマンドで作成する機能が備わっており、それを「マイグレーション」と呼びます。
+
+先ほど実行したコマンドの結果、いくつかテーブルが作られましたが、そのテーブルを定義しているファイルはdatabaseフォルダ内のmigrationsフォルダにある、「日付_create_テーブル名_table.php」ファイルで定義されています。
+
+さて、「次からはいよいよTodoアプリを作っていきます！」と、行きたいところですが、Laravelの基礎知識が無いまま進んでもわからないと思うので、次の章で簡単に解説していきます。
+
+飛ばしてTodoアプリの作り方を見たいという方はこちら
+
+MVCとはなんぞや
+Laravelは、いわゆる「MVCフレームワーク」とよばれるものになります。
+
+Mは「Model」、Vは「View」、Cは「Controller」の略です。
+
+アプリケーション開発では、各機能をM、V、Cのいずれかに分けて整理し、これらの機能を組わせて開発を行います。
+
+MVCは、アプリケーション開発でよく使われるアーキテクチャで、Laravelに限った話ではなく、RubyやSymfonyなど、多くのアプリケーションフレームワークで使われているものになります。
+
+さて、MVCが初心者の方にとってはまず躓くところで、ここを頭の中でなんとなくイメージできるかが重要になってきます。
+そこで以下の図解を用意しました。
+
+
+上の図は、/listにアクセスがあったとき、未完了のTodoの一覧が表示されるまでの流れを図式化したものです。
+
+まず、①でユーザーがTodoアプリケーションの「/list」にアクセスします。
+
+アクセスがあると、②ルーティングというものが行われます。
+ルーティングは、「○○というURLにアクセスあったら▼▼の処理を実行する」というように、アクセスごとに対応する処理を紐づけて、振り分ける役割を担っています。
+
+そして、③コントローラーです。
+コントローラーは、全体の処理を制御する役割を担っています。
+コントローラーでは、そのまま画面（ビュー）を表示するパターンと、「モデル」を経由してデータベースから値を取得し、そのデータを画面（ビュー）に表示する2つのパターンがあります。
+
+まず簡単なパターンから説明しましょう。
+たとえば、/listではなく、TOPページにアクセスしたときを考えてみましょう。
+TOPページでは、単純に「おはようございます！今日のタスクを登録しましょう！」とだけ表示されるとします。
+この場合、データベースから何かデータを取ってきて表示する処理は無く、単純に、あらかじめ決められた文字列を画面（ビュー）に表示すればいいことになります。
+「ビュー」は、その名の通り、画面表示の役割を担っています。
+
+一方で、/listにアクセスしたときは違います。
+/listにアクセスしたときに表示されるものは、未完了のタスクです。
+これを表示するためには、データベースから未完了のタスクを取得してきて、それを画面（ビュー）に表示しなければいけません。
+データベースから値を取得する際には、③のコントローラーから「モデル」を経由してデータベースから値を取得します。
+そして、コントローラーで再びデータを受け取り、それを「ビュー」に渡します。
+その結果、ユーザは、「/list」にアクセスしたときに未完了のタスク一覧が見えるということになります。
+ここで登場した「モデル」は、データベースとの処理全般を処理する役割を担っています。
+
+MVCについてなんとなく理解できましたでしょうか？
+
+おそらく完全に理解はできませんよね。
+MVCを人間の世界で考えると、以下のようなイメージです。これの方がきっとわかりやすいでしょう。
+
+上の図で、左側の日本人男性があなただと思ってください。
+日本人に「こんにちは！」話しかけられた（アクセスがあった）場合、あなたは即座に「こんにちは！」と返すことができるはずです。
+
+ただ、ドイツ人に「Guten Tag」と話しかけられてもすぐには返答できないですよね。
+日本人男性はたまたまメモ帳（データベース）にメモしていたので、それを見て（データを取得して）、結果としてカタコトながらも「グーテン・ターク」と返しています。
+
+イメージとしてはこんな感じです（笑）
+あくまでもイメージなので細かいことは気にしないでください。
+
+MVCを体感してみよう
+MVCのイメージはなんとなくつかめましたね！
+それでは、Laravelにおいて、MVCはどのように実装されているのかをコードを書きながら学んでいきましょう！
+
+さきほどの図と照らし合わせながら確認すると理解しやすいです。
+
+
+モデルを作成する
+まず、MVCのちM(モデル)を作成しましょう。
+今回は、データベースとして「todo_lists」というテーブルを作成することにします。
+
+以下のコマンドを実行することで、モデルとマイグレーションファイルとコントローラーを同時に作ることができます。
+注意点としては、モデルの名前は「単数形」であることです。
+
+一方、テーブル名は複数形にします。
+
+
+php artisan make:model TodoList -mc
+
+以下のように3つファイルが新たに作成されました。
+テーブルを定義するマイグレーションファイルのファイル名は自動的に複数形になっています。
+
+
+続いて、database\migrationsフォルダ内に作成された「日付_create_todo_lists_table.php」を開いてください。
+ここには、upとdownという2つのメソッドがあります。
+
+upメソッドの方に、以下の「★」を追記しましょう。
+
+
+public function up()
+{
+  Schema::create('todo_lists', function (Blueprint $table) {
+    $table->id();
+    $table->string('name', 100); //★追記
+    $table->timestamps();
+  });
+}
+
+これで、以下のコマンドを実行してみましょう。
+
+
+php artisan migrate
+
+phpMyAdminを確認すると、先ほどまではなかった「todo_lists」というテーブルが作成されています。
+また、カラムもidやname、created_atやupdated_atも作成されています。
+$table→timestamps()は、created_atとupdated_atの2つのカラムを追加する機能を持ちます。
+
+
+テーブルができたので、続いてダミーデータをいくつか登録しようと思います。
+ダミーデータを登録するためには「シーダー」という機能を使います。
+以下のコマンドを実行してシーダーファイルを作成しましょう。
+
+
+php artisan make:seeder TodoListSeeder
+
+すると、database\seedersフォルダ内に、「TodoListSeeder.php」が作成されます。
+中身は以下のようになっています。
+
+TodoListSeeder.php
+
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class TodoListSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        //
+    }
+}
+
+これを、以下の様に編集します。
+
+TodoListSeeder.php
+
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB; //追記
+
+class TodoListSeeder extends Seeder
+{
+  /**
+   * Run the database seeds.
+   *
+   * @return void
+   */
+  public function run()
+  {
+    DB::table('todo_lists')->insert(
+      [
+        [
+          'name' => 'テスト1',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+        [
+          'name' => 'テスト2',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+        [
+          'name' => 'テスト3',
+          'created_at' => now(),
+          'updated_at' => now(),
+        ],
+      ]
+    );
+  }
+}
+
+次に、database\seeders\DatabaseSeeder.phpを開きます。
+runメソッド内を以下のように変更し、先ほど作成したTodoListSeederクラスを呼び出すように設定します。
+
+DatabaseSeeder.php
+
+public function run()
+{
+  $this->call([
+    TodoListSeeder::class
+  ]);
+}
+
+これで、シードを実行する準備が整いました。
+次に、以下のコマンドを入力して実行してください。
+
+
+php artisan db:seed --class=TodoListSeeder
+
+実行したら、phpMyAdminにてtodo_listsテーブル内を確認してみましょう。
+
+上記の通り、ダミーデータが作成されていますね！
+
+これでデータが用意できたので、次はコントローラー側を整備しましょう。
+
+コントローラーを作成する
+さきほどモデルを作成したときに、同時にコントローラーも作成しましたね！
+作成されたファイルは、app\Http\Controllersフォルダ内にある、「TodoListController.php」です。
+初期状態では、以下のようになっています。
+
+TodoListController.php
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class TodoListController extends Controller
+{
+    //
+}
+
+このコントローラー内に書く処理としては、先ほど作成したモデルクラスの、「Todolist」から「データを取得する処理」を書き、「取得した値をビューに渡す処理」を書きます。
+具体的には以下のようにします。
+
+TodoListController.php
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\TodoList;//追記
+
+class TodoListController extends Controller
+{
+  public function index(Request $request)
+  {
+    $todo_lists = TodoList::all();
+
+    return view('todo_list.index', ['todo_lists' => $todo_lists]);
+  }
+}
+
+まず、以下の部分で、データベースからテーブル「todo_lists」にある全レコードを取得しています。
+
+TodoListController.php
+
+$todo_lists = TodoList::all();
+
+このモデルクラス「TodoList」を使うためには、スクリプトの先頭でuse文によりTodoListを読み込まないといけない点に注意してくだいさい。
+
+そして、以下で、テンプレートに変数「todo_lists」を渡しています。
+
+TodoListController.php
+
+return view('todo_list.index', ['todo_lists' => $todo_lists]);
+
+viewメソッドの第一引数には、「どのビューファイルか」を指定します。
+書き方は、view(‘フォルダ名.ファイル名’)となります。
+また、ビューに値を渡すときは、このように変数名と値がペアになった連想配列を第2引数に設定します。
+
+ビューファイルを用意する
+つづいて、画面に表示するためのビューファイルを作成します。
+さきほど、コントローラーでview(‘todo_list.index’)と書いたので、resources\viewsフォルダ内には以下のようなフォルダ構成でファイルを作成すればOKです。
+
+
+resrouces
+  L views
+      L todo_list
+          L index.blade.php
+
+このファイルでは、さきほどコントローラーから渡された「todo_lists」を表示します。
+そのためには、以下のように書きます。
+
+resources\views\todo_list\index.blade.php
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>テスト</title>
+</head>
+
+<body>
+
+    @if ($todo_lists->isNotEmpty())
+        <ul>
+            @foreach ($todo_lists as $item)
+                <li>
+                    {{ $item->name }}
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
+</body>
+
+</html>
+
+Laravelでは、ビューを表示する用のファイルとして、Bladeテンプレートを使用します。
+アットマークから始まるものは、Bladeディレクティブといい、Bladeテンプレート内でスクリプトを書く際は、基本的にBladeディレクティブを使用します。
+もちろん、素のPHPを書くこともできます。
+
+変数の出力は波括弧を２つ重ねて以下のように記述します。
+
+
+{{ 変数の値 }}
+
+先ほど、コントローラーから渡ってきた変数「todol_lists」は、「コレクション型」という型の配列のようなもので渡ってきます。
+
+このコレクション型を操作するためのメソッドがいくつかあり、そのうちの1つである「isNotEmpty」メソッドを使用して、コレクションが空じゃないときだけ表示するようにしています。
+※テーブルにデータが１つもないときは、コレクションは空なので、ulタグそのものが表示されません。
+
+ルーティングする
+最後に、ルーティングの設定を行います。
+routes\web.phpを開き、以下を追記します。
+
+routes\web.php
+
+Route::get('/list', [TodoListController::class, 'index']);
+
+ルーティングは以下のような形式で書きます。
+
+
+Route::get( アドレス , [コントローラーの名前::class , メソッド名] );
+
+Route::getとしていますが、フォームからPOST送信した場合に何か処理を行う時は、Route::postというように書きます。
+
+これでMVCが完成しました！
+それでは、以下のコマンドを入力して実行し、「/list」にアクセスしてみましょう。
+
+
+php artisan serve
+
+見た目は味気ないですが、ちゃんとデータが表示されていますね！！
+
+
+本当にデータベースのデータとリンクしているか確認するために、TodolistSeeder.phpを開き、runメソッド内を、以下のように修正してみましょう。
+
+TodolistSeeder.php
+
+public function run()
+{
+  DB::table('todo_lists')->insert(
+    [
+      [
+        'name' => 'テスト1',
+        'created_at' => now(),
+        'updated_at' => now(),
+      ],
+      [
+        'name' => 'テスト2',
+        'created_at' => now(),
+        'updated_at' => now(),
+      ],
+    ]
+  );
+}
+
+先ほどあった、「テスト３」を削除しました。
+改めてデータを登録するために、以下のコマンドを実行します。
+このコマンドは、データベースからすべてのテーブルを削除したあと、マイグレーションを行い、さらにシーディングによりデータ登録を行うコマンドです。
+
+
+php artisan migrate:fresh --seed
+
+これで、「/list」にアクセスしたときに期待する表示は、「テスト１」と「テスト２」だけが表示されていることです。
+それでは、実際にアクセスして確認してみましょう。
+
+
+期待通りですね！
+
+あらためて、MVCの図解を掲載します。
+
+これまで行ったことと、この図を照らし合わせると次のようになります。
+①「/list」にGETリクエストがある
+②ルーティングで指定したコントローラーのメソッドが実行される
+③データベースからモデルを通してデータを取得し、ビューに渡し、表示する
+
+こんな数行のために色々手を動かしましたね（汗）
+ただ、きっとMVCの概念自体はもう頭に入っているはずです！
+が、あとは実際にどのように手を動かして実装してくかですよね！
+
+私的には、モデルを作ってデータベースにテーブルとデータを登録し、次にコントローラーを整備して、その次にビューを作成し、最後にルーティング。という手順でやるといいのかなと思います！
+
+慣れないと難しいですが、このあとのTodoアプリをつくる際にも同じような手順でやっていくので、ぜひ手を動かしながら試してみてください！
+
+TailwindCSSとは？Bootstrapとの違いについて
+先ほど「/list」にアクセスして表示された画面が、なんとも味気ない感じでしたね。
+もちろん、自分でクラスを付与して、cssファイルを作成し、それを読み込めばスタイリングができます。
+しかし、Webアプリケーションでは開発効率を上げるために、BootstrapなどのUIキットを使って、なるべくcssを書かないで作成していくでしょう。
+
+もちろん、Bootstrapでもいいです。
+ただ、Bootstrapでは、すでに用意されたUIキットを使うイメージで、細かい調整が難しいのがデメリットです。
+また、Bootstrapの場合、jsファイルも一緒に読み込む必要があるので読み込むファイル量が増えるというのもデメリットです。
+しかも、実際には使っていないクラスやJSのスクリプトも読み込むので、必然的に容量が大きいです。
+
+対して、最近登場した「TailwindCSS」というものがあります。
+これは、UIキットではなく、「ユーティリティクラス」です。
+Tailwind CSS
+
+Bootstrapでは、「こういうHTML構造で、こういうクラスかけば、こういうUIできますよ～」というひな型があり、それを使うイメージです。
+が、TailwindCSSはUIキットではないので、そのような雛形はありません。
+代わりに、大量のユーティリティクラスがあり、それを組み合わせて1つのUIを作成していきます。
+そのため、細かい調整がしやすく、オリジナルのUIを作成していくことができます。
+
+大量のユーティリティクラスをもったファイルなので「cssファイルが重いのでは？」と思うかもしれません。
+しかし、リセット系のcssの記述と、実際に使用したcssだけを抽出したcssファイルを読み込むので、ファイル容量はとても軽いです。
+また、BootstrapのようなJSファイルは読み込まないので、余計なファイルがなく、容量が小さいという点も魅力です。
+
+デメリットとしては、クラス名がとても長くなることです。
+しかし、これは慣ればそんなに気になることはありません。
+VsCodeのプラグインを入れれば、クラス名をソートできるようにもなるので、複数人で開発しているときでも、ルールに沿ってクラス指定でき、品質も保たれるでしょう。
+
+TailwindCSSを導入する
+それでは早速、LaravelにTailwindCSSを導入して「/list」の表示を整えてみましょう。
+
+💡 Laravel 9の最新リリースから、フロントのビルドツールがwebpackからViteになりました。
+Viteをつかうためには、Node.jsのバージョンが、14.18.0以上である必要があります。
+このあと「npm run dev」というコマンドを実行しますが、そこでうまくいかない場合は、Node.jsのバージョンが要件を満たしていない可能性があります。
+自分が今使っているNode.jsのバージョンを確認するためには、以下のコマンドを実行すればOKです。
+node -v
+
+LaravelにTailwindCSSを導入する方法は、基本的に以下のTailwindCSS公式サイトを参考に進めていけば問題ありません。
+Install Tailwind CSS with Laravel
+
+上記のサイトにいくと、「1. Create your project」というステップがありますが、こちらは不要です。
+なぜなら、すでにlaravel_testというプロジェクトを作成しているからです。
+
+次に、laravel_testプロジェクトに移動したコマンドプロンプト(またはターミナル)を開きます。
+そして、以下のコマンドを実行します。
+
+
+npm install -D tailwindcss postcss autoprefixer
+
+インストールの処理が終わったら、以下を実行します。
+
+
+npx tailwindcss init -p
+
+これで、tailwind.config.jsというファイルと、postcss.config.jsというファイルが作成されます。
+
+次に、tailwind.config.jsを開き、以下のように変更します。
+
+tailwind.config.js
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    content: [
+        "./resources/**/*.blade.php",
+        "./resources/**/*.js",
+        "./resources/**/*.vue",
+    ],
+    theme: {
+        extend: {},
+    },
+    plugins: [],
+}
+
+contentという名前は、Tailwind CSSのv2までは「purge」という名前でした。
+purgeの意味は、「不要なデータを除去する」といった意味です。
+たくさんあるユーティリティクラスの中から、実際に使用されているクラスだけを抽出して、他の使っていないクラスは除去して読み込むようになり、ファイル容量が減る仕組みです。
+
+Tailwind CSSを使う場合は、contentに、Tailwind CSSを使用するファイルのパスを記述する必要があり、必要に応じて追記していきます。
+詳しくは、公式サイトをご確認ください。
+Content Configuration
+
+次に、resources\css\app.cssを開きます。
+最初は何も記載がありませんが、以下を追記します。
+
+resources\css\app.css
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+そうしたら、以下のコマンドを実行し、起動します。
+
+
+npm run dev
+
+※ここでエラーになった場合は、Node.jsのバージョンが14.18.0以上ではない可能性があります
+
+次に、resources/views/todo_list/index.blade.phpを開き、以下の様にします。
+
+resources\views\todo_list\index.blade.php
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>テスト</title>
+
+    @vite('resources/css/app.css')
+</head>
+
+<body>
+
+    @if ($todo_lists->isNotEmpty())
+        <div class="container px-5 mx-auto">
+            <ul class="font-medium text-gray-900 bg-white rounded-lg border border-gray-200">
+                @foreach ($todo_lists as $item)
+                    <li class="py-4 px-5 w-full rounded-t-lg border-b last:border-b-0 border-gray-200">
+                        {{ $item->name }}
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+</body>
+
+</html>
+
+headタグ内の、以下のコードにより、Tailwind CSSを読み込んでいます。
+
+resources\views\todo_list\index.blade.php
+
+@vite('resources/css/app.css')
+
+そして、ulタグやliタグには、Tailwind CSSのユーティリティクラスを付与してスタイリングしています。
+
+これで、ブラウザにて「/list」にアクセスしてみましょう。
+以下のようにスタイリングされているはずです！
+
+
+もし「/list」にアクセスできない場合は、以下のコマンドを実行してサーバーを立ち上げてください。
+
+
+php artisan serve
+
+フロント用(Vite)のサーバーを起動する「npm run dev」と、バックエンド(Laravel)用のサーバーを起動する「php artisan serve」の両方を起動しておく必要があるので注意しましょう。
+
+Todoアプリを作ろう(要件定義・設計)
+さて、いよいよTodoアプリを作ることにしましょう。
+
+漠然と「Todoアプリ」と言っても、「何をしたいのか」「どういった機能をつけるか」「どのような画面遷移か」などが分からないと、実装ができません。
+そのため、実装に入る前に、今回作るTodoアプリの要件定義・設計をしましょう。
+
+なお、要件定義と設計については以下の記事がとても詳しいので、これを参考に行っていきます。
+要件定義～システム設計ができる人材になれる記事
+
+Todoアプリの要件定義
+今回作るTodoアプリの要件(システムに実装する機能)は、以下の通りです。
+タスクの追加,未完了タスクの表示,タスクのステータス更新と、タスク編集,タスクの削除
+
+いわゆる「CRUD」を盛り込む形となっています。
+CRUDとは、データの作成(Create)、データの読み取り(Read)、データの更新(Update)、データの削除(Remove)の頭文字を取ったものになります。
+CRUDができないとWEBアプリケーションそのものを作ることができないので、これらの操作ができることは必須となります。
+
+Todoアプリの画面設計
+要件定義をもとに、デザインツールでワイヤーフレームを作成し、画面設計します。
+
+画面設計は、MVCでいうところの「V（View）」に相当するものになります。
+
+具体的な画面遷移は次の通りです。
+まず最初に、以下のような画面が表示されます。
+
+
+そして、タスクを追加すると以下のように、一覧表示されます。
+
+
+「削除」をクリックしたら、ブラウザ標準のアラートダイアログを表示し、OKをクリックしたらデータが削除されます。
+
+
+「編集」をクリックしたら、編集画面に遷移します。
+
+
+ここで、タスクの内容を編集して、「編集する」を押したら、一覧ページに戻ります。
+
+「完了」を押すと、該当タスクが一覧から消えます。
+
+Todoアプリの機能設計
+画面設計ができたら、次は機能設計です。
+
+各画面がもつ機能について、大まかに記載しておきます。
+機能設計は、MVCでいうところの「C（Controller）」に相当します。
+
+▼トップページ
+
+
+▼トップページ（タスク登録）
+
+
+▼トップページ（タスク削除）
+
+
+Todoアプリのデータ設計
+機能設計ができたら、次はデータ設計です。
+
+データ設計は、MVCでいうところの「M(モデル)」に相当するものになります。
+今回登場するテーブルは「タスク」を管理するテーブルだけなので、以下のようになります。
+
+ステータスは、タスクが完了のときはtrue、未完了のときはfalseです。
+タスクを新規追加したときは、デフォルトでfalseになるように設定します。
+
+Todoアプリのデータの流れ
+最後に、「データベースと画面遷移の関係」を整理すると以下のようになります。
+▼クリックすると画像が別タブで開きます。
+
+
+
+さて、これで実装フェーズに入る準備が整いました。
+次からはいよいよ、この設計図をもとに、コードを書いていきます！
+
+細かい説明はかなり省いてしまいましたが、画面設計や機能設計、データ設計については以下の記事を参考に進めてみました。
+皆さんも以下の記事を参考に取り組んでみてください。
+要件定義～システム設計ができる人材になれる記事
+Todoアプリを作ろう(実装)
+まずはMVCにあたるM(モデル)を作成しましょう。
+モデルを作ってもテーブルが無いと意味が無いので、テーブルを作ってからモデルを作るという手順で行きます。
+
+tasksテーブルを作る
+先ほど示した以下を参考に作成します。
+
+
+テーブルをつくるために、マイグレーションファイルを作成します。
+以下のコマンドを実行しましょう。
+
+
+php artisan make:migration create_tasks_table
+
+すると、database/migrationsフォルダ内に、「日付_create_tasks_table.php」が作成されます。
+コードの中身で、Schema::createのfunctionsの中身で、tasksテーブルのカラムを定義します。
+今回は以下のようにすればOKです。
+
+database\migrations\日付_create_tasks_table.php
+
+Schema::create('tasks', function (Blueprint $table) {
+  $table->id();
+  $table->string('name', 100);
+  $table->boolean('status')->default(false);
+  $table->timestamp('updated_at')->useCurrent()->nullable();
+  $table->timestamp('created_at')->useCurrent()->nullable();
+});
+
+statusのデフォルトはfalseにしたいので、Laravelの「カラム修飾子」にある、default()を使っています。
+
+また、作成日と更新日のデフォルトを現在の日付になるようにカラム修飾子を使って設定しています。
+▼参考
+Laravel のマイグレーションで created_atとupdated_atのデフォルトを設定する
+
+これらの「カラム修飾子」は他にもたくさんあるのでドキュメントを参考にしてみてください。
+https://readouble.com/laravel/9.x/ja/migrations.html
+
+続いて、マイグレーションを実行します。
+以下のコマンドを実行してください。
+
+
+php artisan migrate
+
+phpMyAdminを確認すると、「tasks」テーブルができているはずなので確認してみましょう。
+
+上記のように、tasksテーブルが作成されていますね！
+また、デフォルトの設定もちゃんと反映されているようです！
+
+モデルを作る
+お次は、モデルを作成しましょう！
+以下のコマンドを実行します。
+テーブル名が、「tasks」と複数形だったので、モデル名は単数形になります。
+
+
+php artisan make:model Task
+
+これで、app\ModelsにTask.phpが作成されます。
+
+コントローラーを作る
+つづいて、コントローラーを作成しましょう。
+Laravelには、CRUD操作を1行のコードでコントローラーに割りあてる仕組みがあります。
+それが「リソースコントローラー」です。
+
+通常、以下のように１つ１つメソッドを作成してルートに記述していきます。
+
+web.php
+
+Route::get('/',[TaskController::class,'index']);//一覧表示
+Route::post('/create',[TaskController::class,'create']);//タスク追加
+Route::post('/edit',[TaskController::class,'edit']);//タスク更新
+Route::post('/delete',[TaskController::class,'delete']);//タスク削除
+
+が、リソースコントローラーを使うと、これを1つにまとめてより簡潔に書けるようにすることができます。
+
+まずはリソースコントローラーを作りましょう。
+
+以下のコマンドを実行します。
+リソースコントローラーを作成するときは、resourceオプションを追加します。
+
+
+php artisan make:controller TaskController --resource
+
+これで、app\Http\Controllersに、「TaskController.php」が作成されます。
+
+中身を見てみましょう。
+コードの中には、index、create、store、show、edit、update、destroyというメソッドがあらかじめ作成されています。
+
+次に、ルート情報を追記します。
+▼routes/web.php（関係ある記述のみ記載しています。）
+
+routes\web.php
+
+use App\Http\Controllers\TaskController;
+
+Route::resource('tasks', TaskController::class);
+
+これで、先ほどあったTaskController.php内の各メソッドが使用できるようになりました。
+
+リソースコントローラーでは、これらのメソッドを呼び出すURIがあらかじめ決まっているのが特徴です。
+それを確認するためには、以下のコマンドを実行してください。
+
+
+php artisan route:list
+
+すると、以下のように、現在あるルーティング情報が一覧で表示されます。
+そのうち、以下の赤枠部分が、今回作成したリソースコントローラーに関連するものです。
+▼クリックすると画像が別タブで開きます。
+
+
+
+「このURIにアクセスがあったら、このアクションを実行する」という関係があらかじめ決まっているので、あとはその決まりに従って実装していきます。
+
+波括弧で{ }となっている部分は、IDです。
+
+たとえば、「/tasks/2」でGETアクセスだったら、showメソッドが呼ばれて、IDが2のタスクを表示します。
+
+ビューを作成る
+モデル、コントローラーができたので、ビューを作成していきましょう。
+
+ビューは「resources/views」内で管理します。
+
+viewsフォルダ直下にファイルを作成していってもいいのですが、わかりやすいようにviewsフォルダ直下に「tasks」フォルダを作成して、その中にindex.blade.phpを作成しましょう。
+
+
+resources/views/tasks/index.blade.phpという階層になるように作成します。
+作成したtasksフォルダ内のindex.blade.phpの中身は、ひとまず「タスクページ」などとかいておきましょう。
+
+
+続いて、TaskController.phpの、indexメソッドの中身を以下のようにします。
+
+TaskController.php
+
+public function index()
+{
+    return view('tasks.index');
+}
+
+これで、「/tasks」にアクセスがあったら、先ほど作成したindex.blade.phpの中身が表示されるはずです。
+
+サーバーを「php artisan serve」で起動し、「/tasks」にアクセスしてみましょう。
+
+
+予想通りですね！
+
+では、このページの見た目を、以下のように整えていきます。
+
+
+先ほど作成したindex.blade.phpの中身を以下のようにしてください。
+
+resources\views\tasks\index.blade.php
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Todo</title>
+
+    @vite('resources/css/app.css')
+</head>
+
+<body class="flex flex-col min-h-[100vh]">
+    <header class="bg-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="py-6">
+                <p class="text-white text-xl">Todoアプリ</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="grow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="py-[100px]">
+                <p class="text-2xl font-bold text-center">今日は何する？</p>
+                <form action="/tasks" method="post" class="mt-10">
+                  @csrf
+
+                  <div class="flex flex-col items-center">
+                    <label class="w-full max-w-3xl mx-auto">
+                        <input
+                            class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+                            placeholder="洗濯物をする..." type="text" name="task_name" />
+                    </label>
+
+                    <button type="submit" class="mt-8 p-4 bg-slate-800 text-white w-full max-w-xs hover:bg-slate-900 transition-colors">
+                        追加する
+                    </button>
+                  </div>
+
+                </form>
+            </div>
+        </div>
+    </main>
+    <footer class="bg-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="py-4 text-center">
+            <p class="text-white text-sm">Todoアプリ</p>
+        </div>
+    </div>
+    </footer>
+</body>
+
+</html>
+
+ポイントをいくつか紹介します。
+
+まず、headタグの中で以下の記述により、Tailwind CSSを読み込んでいます。
+
+resources\views\tasks\index.blade.php
+
+@vite('resources/css/app.css')
+
+また、以下では、タスクを入力するテキスト入力欄（name属性の値はtask_nameとしています）と、ボタンをformタグで囲んでいます。
+
+resources\views\tasks\index.blade.php
+
+<form action="/tasks" method="post" class="mt-10">
+  @csrf
+
+  <div class="flex flex-col items-center">
+    <label class="w-full max-w-3xl mx-auto">
+        <input
+            class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+            placeholder="洗濯物をする..." type="text" name="task_name" />
+    </label>
+
+    <button type="submit" class="mt-8 p-4 bg-slate-800 text-white w-full max-w-xs hover:bg-slate-900 transition-colors">
+        追加する
+    </button>
+  </div>
+
+</form>
+
+追加するボタンを押したら、DBに保存したいので、TaskController.phpのstoreメソッドを使いたいです。
+なので、formのアクション属性は「/tasks」で、methodはPOSTにします。
+
+また、Laravelでフォームをつくる場合は、セキュリティ対策のCSRF対策として、必ず「@csrf」というディレクティブが必要です。
+
+詳しくは以下を参照して下さい。
+https://readouble.com/laravel/9.x/ja/csrf.html
+
+タスクを登録する
+続いて、以下の赤線部分をひと通り実装していきます。
+
+
+まず、TaskController.phpのstoreメソッドを編集します。
+
+初期状態は以下の様になっています。
+
+TaskController.php
+
+public function store(Request $request)
+{
+    //
+}
+
+storeメソッドの引数にはRequestというクラスのインスタンスが$requestとして渡ってきます。
+
+このようなやりかたを「依存性注入（DI: Dependency Injection）」といいます。
+これはLaravelの話ではなく、PHP言語の話です。
+少し発展的な内容ですが、Laravelでは依存性注入が多く使われているので一度勉強しておくといいでしょう。
+
+▼依存性の注入について
+https://laraweb.net/surrounding/2001/
+
+💡 このRequestクラスは、Illuminate/Http名前空間に存在しています。
+ただ、Illuminateフォルダなんてルートディレクトリに存在しないですよね。
+実はこのフォルダは、以下にあります。
+vendor/laravel/framework/src/Illuminate
+
+その中にHttpフォルダもあり、Request.phpもあるはずです。
+気になる方はこのファイルの中身を確認してみると面白いかもしれません。
+
+さて、先ほどのタスク入力画面で、「追加する」を押したらこのstoreメソッドにその値が渡ってきます。
+試しに、以下のようにしてその値を確認してみましょう。
+
+TaskController.php
+
+public function store(Request $request)
+{
+  $task_name = $request->input('task_name');
+  dd($task_name);
+}
+
+画面で「テストです」と入力して。。
+
+
+「追加する」を押すと。。
+
+
+ちゃんと受け取れました！成功です！
+
+
+  $request->input('フォームのキーの名前')
+
+と書くことで、フォームから送信されたデータのうち、特定のキーの値を取り出すことができます。
+
+今回は、テキスト入力欄のname属性値を「task_name」にしていたので
+$request->input(‘task_name’)と書くことで、値を取り出しています。
+
+$requestには様々なメソッドが存在しており、これ以外にも送信されたフォーム項目の全ての値を取り出す「$request->all()」などもあります。
+詳しくは、以下を参照してください。
+https://readouble.com/laravel/9.x/ja/requests.html
+
+また、Laravelではデバッグ用の記述がいくつかあり、先ほどはddメソッドを使いデバッグしました。
+このメソッドの他にもdumpなどがあります。
+ddを使うと、dd以降の処理は実行されない。という特徴があり、PHPでいうとvar_dumpしてexit()している感じです。
+
+さて、デバッグもできたので、storeメソッド内で受け取った値をDBへ保存しましょう。
+
+DB操作はいくつか方法があります。
+1つがDBクラスのクエリビルダを使った操作と、もう1つがEloquentというORMによる操作です。
+
+どちらでもいいのですが、今回はせっかくなのでEloquentを使っていきたいと思います。
+
+💡 ORMとは？
+ORMは「Object Relational Mapping」の略です。
+これは、互換性のないデータを自動的に変換して、相互にデータをやり取りできるようにするための仕組みです。
+ORMにより、データベースから取り出されたレコードはPHPのオブジェクトの形に変換して渡されるようになります。
+反対にPHPからデータベースに渡すときは、PHPオブジェクトがレコードに変換して渡されます。
+このように、相互にデータ構造を変換することで、シームレスにやり取りが行えるようになるのです。
+
+[引用] PHPフレームワークLaravel入門 第2版 掌田 津耶乃 (著)
+
+まず、モデルを使うのでuseでTaskモデルを読み込みます。
+app/Http/Controllers/TaskController.phpに、以下を追記します。
+
+TaskController.php
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Task;//追加
+
+次に、storeメソッドを以下のように変更します。
+
+TaskController.php
+
+public function store(Request $request)
+{
+  //モデルをインスタンス化
+  $task = new Task;
+
+  //モデル->カラム名 = 値 で、データを割り当てる
+  $task->name = $request->input('task_name');
+
+  //データベースに保存
+  $task->save();
+
+  //リダイレクト
+  return redirect('/tasks');
+
+}
+
+まず、モデルをインスタンス化する必要があります。
+インスタンス化したものを$taskという変数に入れています。
+
+次に、taksテーブルのnameカラムに、フォームから渡ってきたtask_name属性の値を割り当てます。
+やり方は簡単で、「モデルのインスタンス->カラム名 = 値」とするだけです。
+このようにオブジェクト形式で書くことができるのがORMの便利さと言えるでしょう。
+
+そして、データベースに保存するためにsaveメソッドを実行します。
+
+最後に、/tasksが再び表示されるように、redirectメソッドを使ってリダイレクトしています。
+
+これができたら、先ほど同様に何かテキストに入力して、「追加する」を押してみてください。
+追加したあと、同じ画面が表示され一見何も変化が起きていないように見えますが、DBにはちゃんとデータが登録されているはずです。
+phpMyAdminを開いてtasksテーブルの中身を確認すると、
+
+
+ちゃんと登録されていますね！
+
+statusカラムは、デフォルトでfalse、つまり0になるように設定していたのでこれで問題ありません。
+
+ただ、「追加する」と押したときに、タスクに何も入力していないとエラーになります。
+これを回避するために、バリデーションチェックをしたいと思います。
+
+バリデーション
+バリデーションチェックはいくつか方法がありますが、今回は、Validator::makeを使った方法を取りたいと思います。
+
+Validatorクラスを利用したいので、TaskController.phpに以下を追記します。
+
+TaskController.php
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Task;
+use Illuminate\Support\Facades\Validator;//追加
+
+続いて、storeメソッド内を以下のように修正します。
+
+TaskController.php
+
+public function store(Request $request)
+{
+
+  $rules = [
+    'task_name' => 'required|max:100',
+  ];
+
+  $messages = ['required' => '必須項目です', 'max' => '100文字以下にしてください。'];
+
+  Validator::make($request->all(), $rules, $messages)->validate();
+
+
+
+  //モデルをインスタンス化
+  $task = new Task;
+
+  //モデル->カラム名 = 値 で、データを割り当てる
+  $task->name = $request->input('task_name');
+
+  //データベースに保存
+  $task->save();
+
+  //リダイレクト
+  return redirect('/tasks');
+}
+
+具体的には、以下を追記しました。
+
+TaskController.php
+
+$rules = [
+    'task_name' => 'required|max:100',
+];
+
+$messages = ['required' => '必須項目です', 'max' => '100文字以下にしてください。'];
+
+Validator::make($request->all(), $rules, $messages)->validate();
+
+
+  Validator::make($request->all(),バリデーションルール,エラーメッセージ);
+
+という書き方をします。
+
+第1引数には、$request->all()を指定します。
+
+第2引数にはバリデーションルールを設定します。
+連想配列で指定し、以下のようにします。
+
+
+  [フォームの項目名=>バリデーションルール]
+
+バリデーションルールを複数設定したい場合は、パイプ|でつなぎます。
+
+今回は、task_nameに、必須(required)と、100文字以下(max:100)をバリデーションルールとして設定しました。
+
+第3引数では、配列を指定し、バリデーションのエラーメッセージをカスタマイズできます。
+具体的には、以下のようにします。
+
+
+  [バリデーションルールの名前=>エラーメッセージ]
+
+デフォルトだと英語なので、日本語で分かるようにカスタマイズしました。
+
+これで、バリデーションチェックはOKです。
+
+さらに、Validator::make(…)->validate()としています。
+このように、validateメソッドを呼び出すことで、エラーがあったときは元の画面に戻るようにしています。
+そのため、バリデーションに引っかかったときはそれ以降のDBへの保存処理は実行されません。
+
+ビュー側も編集しましょう。
+labelの中にあるinputタグの下に以下を追記します。
+
+resources\views\tasks\index.blade.php
+
+@error('task_name')
+  <div class="mt-3">
+      <p class="text-red-500">
+          {{ $message }}
+      </p>
+  </div>
+@enderror
+
+
+@error('task_name')
+  <div class="mt-3">
+      <p class="text-red-500">
+          {{ $message }}
+      </p>
+  </div>
+@enderror
+
+ここでは、@errorディレクティブを使用しています。
+これは以下のように書きます。
+
+
+  @error('キー名')
+    {{ $message }}
+  @enderror
+
+指定のキーに対するエラーが発生しているかチェックし、もし発生していたら、それに対応するエラー文を{{ $message }}で出力しています。
+
+これで、先ほどコントローラーで設定したtask_nameキーに設定したバリデーションのうちのどちらかに引っかかれば、
+それに該当するメッセージが表示されます。
+
+試しに、何も入力しないで「追加する」を押してみましょう。
+
+
+続いて、100文字以上の文字も入力してみます。
+
+
+ばっちりですね！
+バリデーションに引っかかったときは、validateメソッドによりこの画面にリダイレクトされるので、DBへ保存もされていないはずです。（実際にphpMyAdminで確認してみてください。）
+
+あわせて、ちゃんと入力したときは、正しくデータが登録されるかも確認しましょう！
+
+タスクを表示する
+さて、お次は以下の部分を実装していきましょう。
+
+TaskController.php
+
+  public function index()
+  {
+    $tasks = Task::all();
+
+    return view('tasks.index', compact('tasks'));
+  }
+
+以下のように書くことで、モデルのレコードを全部取得できます。
+
+
+  モデル名::all();
+
+これを変数$tasksに入れ、ビューファイルに、「tasks」という変数名で渡しています。
+
+これは以下のように書いてもOKです。
+
+
+  return view('tasks.index', ['tasks' => $tasks]);
+
+が、compactというPHPの関数を使うとより簡単に書くことができます。
+
+受け取った値を、ビューで表示するための処理を記述しましょう。
+resources/views/tasks/index.blade.phpを開き、以下の{{– 追記 –}}から{{– 追記ここまで –}}を追記します。
+
+resources\views\tasks\index.blade.php
+
+  <p class="text-2xl font-bold text-center">今日は何する？</p>
+  <form action="/tasks" method="post" class="mt-10">
+      @csrf
+
+      <div class="flex flex-col items-center">
+          <label class="w-full max-w-3xl mx-auto">
+              <input
+                  class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+                  placeholder="洗濯物をする..." type="text" name="task_name" />
+              @error('task_name')
+                  <div class="mt-3">
+                      <p class="text-red-500">
+                          {{ $message }}
+                      </p>
+                  </div>
+              @enderror
+          </label>
+
+          <button type="submit"
+              class="mt-8 p-4 bg-slate-800 text-white w-full max-w-xs hover:bg-slate-900 transition-colors">
+              追加する
+          </button>
+      </div>
+
+  </form>
+
+
+  {{-- 追記 --}}
+  @if ($tasks->isNotEmpty())
+      <div class="max-w-7xl mx-auto mt-20">
+          <div class="inline-block min-w-full py-2 align-middle">
+              <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                  <table class="min-w-full divide-y divide-gray-300">
+                      <thead class="bg-gray-50">
+                          <tr>
+                              <th scope="col"
+                                  class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">
+                                  タスク</th>
+                              <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                  <span class="sr-only">Actions</span>
+                              </th>
+                          </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                          @foreach ($tasks as $item)
+                              <tr>
+                                  <td class="px-3 py-4 text-sm text-gray-500">
+                                      <div>
+                                          {{ $item->name }}
+                                      </div>
+                                  </td>
+                                  <td class="p-0 text-right text-sm font-medium">
+                                      <div class="flex justify-end">
+                                          <div>
+                                              <form action="/tasks/{{ $item->id }}"
+                                                  method="post"
+                                                  class="inline-block text-gray-500 font-medium"
+                                                  role="menuitem" tabindex="-1">
+                                                  @csrf
+                                                  @method('PUT')
+                                                  <button type="submit"
+                                                      class="bg-emerald-700 py-4 w-20 text-white md:hover:bg-emerald-800 transition-colors">完了</button>
+                                              </form>
+                                          </div>
+                                          <div>
+                                              <a href="/tasks/{{ $item->id }}/edit/"
+                                                  class="inline-block text-center py-4 w-20 underline underline-offset-2 text-sky-600 md:hover:bg-sky-100 transition-colors">編集</a>
+                                          </div>
+                                          <div>
+                                              <form action="/tasks/{{ $item->id }}" method="post"
+                                                  class="inline-block text-gray-500 font-medium"
+                                                  role="menuitem" tabindex="-1">
+                                                  @csrf
+                                                  @method('DELETE')
+                                                  <button type="submit"
+                                                      class="py-4 w-20 md:hover:bg-slate-200 transition-colors">削除</button>
+                                              </form>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                          @endforeach
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+  @endif
+  {{-- 追記ここまで --}}
+
+すると、こんな見た目になります。
+
+
+
+$tasks→isNotEmpty()を実行することで、モデルのレコードが存在するかどうか確認し、レコードが無い場合は、divタグを表示しないようにしています。
+
+また、@foreachディレクティブにより、モデルのレコードをループで回して表示しています。
+
+完了、編集、削除のボタンは、それぞれformタグで囲んでおり、レコードIDを紐づけるように設定しています。
+
+この際、各formタグの中にも必ず@csrfが必要なことに注意しましょう。
+
+ここで、リソースコントローラーの決まり事をおさらいしましょう。
+
+TaskController.php内の各メソッドは以下のURIとリクエストで関連付けられているのでしたね。
+
+
+
+完了ボタンを押したときは、updateメソッドを実行したいです。
+そこで、上記を確認すると、PUTまたはPATCHで、「tasks/タスクのID」にアクセスすれば呼び出すことができると分かります。
+
+ただ、HTMLのformタグではGETかPOSTしかaction属性には設定できません。
+
+そのため、@method(‘PUT’)などとしてformタグの中に書いてあげると、PUTとしてリクエストを送ることが出来ます。
+
+削除ボタンも同様に、@method(‘DELETE’)をformタグの中に書いています。
+
+編集ボタンは、aタグで、href属性の値は「/tasks/{{ $item->id }}/edit/」としています。
+
+これは、リソースコントローラーのeditメソッドを呼び出し、editメソッド内で編集画面のビュー（この後作成します）を返すようにするためです。
+
+さて、これで一覧表示画面が完成しました。
+試しにいくつかタスクを登録してみて、タスクが増えるか確認してみてください！
+
+【タスクを編集する】
+TaskController.php:
+  public function edit($id)
+  {
+    $task = Task::find($id);
+    return view('tasks.edit', compact('task'));
+  }
+editメソッドが呼び出されるのは、
+GETで「/tasks/タスクのID/edit」というアクセスがあったとき。
+この「タスクのID」が、editメソッドの変数$idとして渡ってくる。
+これを使い、以下のように書くことで、$idに一致するレコードを取得することができる。
+モデル名::find(整数);
+
+※【find】は、テーブルの「id」カラムから指定の番号(整数)のものを検索します。
+テーブルのプライマリーキーが「id」という名前であることが前提のメソッドのため、
+プライマリーキーのカラム名が「id」ではない場合は、うまく動かないので注意が必要。
+
+もし、違う名前のプライマリーキーだった場合は、
+モデルクラスに$primaryKeyというプロパティを用意して、
+別の名前のプライマリーキーのカラム名を設定すればOK。
+
+取得したレコードを$task変数に格納し、tasksフォルダのedit.blade.phpに、
+「task」という変数でデータを渡している。
+
+次に、resources/views/tasksフォルダ何に、edit.blade.phpを作成し、
+中身を以下のようにする。
+
+resrouces/views/tasks/edit.blade.php:
+-------------------------------------------------------------
+
+ <!DOCTYPE html>
+  <html lang="ja">
+
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <title>Todo</title>
+
+      @vite('resources/css/app.css')
+  </head>
+
+  <body class="flex flex-col min-h-[100vh]">
+      <header class="bg-slate-800">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6">
+              <div class="py-6">
+                  <p class="text-white text-xl">Todoアプリ-編集画面</p>
+              </div>
+          </div>
+      </header>
+
+      <main class="grow grid place-items-center">
+          <div class="w-full mx-auto px-4 sm:px-6">
+              <div class="py-[100px]">
+                  <form action="/tasks/{{ $task->id }}" method="post" class="mt-10">
+                      @csrf
+                      @method('PUT')
+
+                      <div class="flex flex-col items-center">
+                          <label class="w-full max-w-3xl mx-auto">
+                              <input
+                                  class="placeholder:italic placeholder:text-slate-400 block bg-white w-full border border-slate-300 rounded-md py-4 pl-4 shadow-sm focus:outline-none focus:border-sky-500 focus:ring-sky-500 focus:ring-1 sm:text-sm"
+                                  type="text" name="task_name" value="{{ $task->name }}" />
+                              @error('task_name')
+                                  <div class="mt-3">
+                                      <p class="text-red-500">
+                                          {{ $message }}
+                                      </p>
+                                  </div>
+                              @enderror
+                          </label>
+
+                          <div class="mt-8 w-full flex items-center justify-center gap-10">
+                              <a href="/tasks" class="block shrink-0 underline underline-offset-2">
+                                  戻る
+                              </a>
+                              <button type="submit"
+                                  class="p-4 bg-sky-800 text-white w-full max-w-xs hover:bg-sky-900 transition-colors">
+                                  編集する
+                              </button>
+                          </div>
+                      </div>
+
+                  </form>
+
+              </div>
+          </div>
+      </main>
+      <footer class="bg-slate-800">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6">
+              <div class="py-4 text-center">
+                  <p class="text-white text-sm">Todoアプリ</p>
+              </div>
+          </div>
+      </footer>
+  </body>
+
+  </html>
+-----------------------------------------------------
+
+「編集する」を押したら、TaskController.phpのupdateメソッドを
+使用してレコードを更新する予定。
+
+そのため、action属性の値は「/tasks/{{ $task->id }}」にして、
+PUTでリクエストを送りたいので、formタグの中に@method(‘PUT’)を入れている。
+
+inputタグのvalue属性の値は、TaskController.phpのeditメソッドから渡ってきた
+$task変数を使用して、「$task→name」とすることで、
+該当レコードのnameカラムの値を出力している。
+
+最後に、「編集する」を押した後に呼び出される
+updateメソッドの中身を編集する。
+以下のようにする。
+
+TaskController.php：
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーpublic function update(Request $request, $id)
+  {
+
+    $rules = [
+      'task_name' => 'required|max:100',
+    ];
+
+    $messages = ['required' => '必須項目です', 'max' => '100文字以下にしてください。'];
+
+    Validator::make($request->all(), $rules, $messages)->validate();
+
+
+    //該当のタスクを検索
+    $task = Task::find($id);
+
+    //モデル->カラム名 = 値 で、データを割り当てる
+    $task->name = $request->input('task_name');
+
+    //データベースに保存
+    $task->save();
+
+    //リダイレクト
+    return redirect('/tasks');
+  }
+ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+
+基本的には、
+登録処理を行ったstoreメソッドの記述と同じです。
+唯一違う点は、storeメソッドではTaskモデルをnewしてインスタンス化していたところを、
+updateではfindメソッドでインスタンスを用意している。
+試しに、タスクの名前を変更したり、バリデーションにかかるか確認してみる。
+
+※Xampを使っている。
+
+https://qiita.com/ysda/items/23593550141c54c9e5df
+
+
+【タスクを完了する】
+更新処理なので、updateメソッドを使用。
+処理内容は、tasksテーブルのstatusカラムの値をtrueにすること。
+updateメソッドは、「編集する」でも使われているため、どちらの処理を実行するのか、今のままだと判別がつかない。
+そこで、完了ボタンを設置しているformタグの中身に以下を追記する。
+resources/view/tasks/index.blade.php：
+<form action="/tasks/{{ $item->id }}"
+    method="post"
+    class="inline-block text-gray-500 font-medium"
+    role="menuitem" tabindex="-1">
+    @csrf
+    @method('PUT')
+
+    {{-- 追記 --}}
+    <input type="hidden" name="status" value="{{$item->status}}">
+    {{-- 追記 --}}
+
+    <button type="submit"
+        class="bg-emerald-700 py-4 w-20 text-white md:hover:bg-emerald-800 transition-colors">完了</button>
+</form>
+inputタグのhiddenを追記。
+ちゃんとこの値が取れるか、
+TaskController.phpのupdateメソッド内でデバッグをする。
+TaskController.php:
+  public function update(Request $request, $id)
+  {
+
+    dd($request->status);//追記
+完了ボタンを押下して、「0」が表示されたら、成功
+続いて、編集画面に移動して、編集ボタンを押したときも確認。
+nullになっている。
+編集画面では、先ほどのinput:hiddenタグを書いていないのでこれで正しい！
+これで、updateメソッド内で、完了ボタンを押したときか、
+編集ボタンを押したときかの判別がつくようになった！
+
+updateメソッドを以下のように修正する。
+TaskController.php：
+  public function update(Request $request, $id)
+  {
+
+    //「編集する」ボタンをおしたとき
+    if ($request->status === null) {
+      $rules = [
+        'task_name' => 'required|max:100',
+      ];
+
+      $messages = ['required' => '必須項目です', 'max' => '100文字以下にしてください。'];
+
+      Validator::make($request->all(), $rules, $messages)->validate();
+
+
+      //該当のタスクを検索
+      $task = Task::find($id);
+
+      //モデル->カラム名 = 値 で、データを割り当てる
+      $task->name = $request->input('task_name');
+
+      //データベースに保存
+      $task->save();
+    } else {
+      //「完了」ボタンを押したとき
+
+      //該当のタスクを検索
+      $task = Task::find($id);
+
+      //モデル->カラム名 = 値 で、データを割り当てる
+      $task->status = true; //true:完了、false:未完了
+
+      //データベースに保存
+      $task->save();
+    }
+
+
+    //リダイレクト
+    return redirect('/tasks');
+  }
+
+完了ボタンを押したときの確認方法は、phpMyAdminを開き、
+完了ボタンを押したレコードのstatusが1になっていればOK。
+
+【完了したタスクを非表示にする】
+最後に、一覧表示するタスクが、現在は完了・未完了問わず全て表示されているため、
+「未完了のものだけ」にする。
+TaskController.php：public function index()
+{
+  $tasks = Task::where('status', false)->get();
+
+  return view('tasks.index', compact('tasks'));
+}
+これだけで、statusがfalse(つまり0)のレコードだけ取得され、
+表示されるようになる！
+
+whereの使い方は以下のようにする：
+
+$変数 = モデルクラス::where(カラム名, 値)->get(); // 複数のレコードを取得するとき
+$変数 = モデルクラス::where(カラム名, 値)->first(); // 最初のレコードだけ取得するとき
+
+【タスクを削除する】
+①「resources/views/tasks/index.blade.php」を開き、
+　削除ボタンの部分を以下のように修正する。
+resources/views/tasks/index.blade.php：
+<div>
+  <form onsubmit="return deleteTask();"
+      action="/tasks/{{ $item->id }}" method="post"
+      class="inline-block text-gray-500 font-medium"
+      role="menuitem" tabindex="-1">
+      @csrf
+      @method('DELETE')
+      <button type="submit"
+          class="py-4 w-20 md:hover:bg-slate-200 transition-colors">削除</button>
+  </form>
+</div>
+
+②body閉じタグ直前に、以下のJavaScriptの記述を追記する。
+resources/views/tasks/index.blade.php：
+  <script>
+    function deleteTask() {
+        if (confirm('本当に削除しますか？')) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+  </script>
+
+コード解説：
+formタグにonsubmitイベントを付与している。
+その中に独自関数のdeleteTaskを指定している。
+
+deleteTask本体の記述としては、confirmメソッドを呼び出すことで、
+ブラウザ標準の確認モーダルが表示され、OKを押したらaction属性のURLに送信され、
+キャンセルを押したら何も変化が起きないようにしている。
+
+onsubmitの使い方：
+https://chusotsu-program.com/form-submit-confirm/
+
+③destroyメソッドを変編集
+TaskController.php：
+ public function destroy($id)
+  {
+    Task::find($id)->delete();
+
+    return redirect('/tasks');
+  }
+
+該当のレコードを、findで探し、deleteメソッドを呼び出すだけで削除ができる。
+削除したあとは元の画面に戻ってきてほしいのでリダイレクトしている。
+これで、削除ボタンを押したときの動作を確認する。
